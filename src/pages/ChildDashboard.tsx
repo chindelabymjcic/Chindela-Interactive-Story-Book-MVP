@@ -9,7 +9,6 @@ import {
   BookOpen,
   PenLine,
   Star,
-  Trophy,
   Sparkles,
   LogOut,
   Shield,
@@ -17,20 +16,17 @@ import {
 
 export default function ChildDashboard() {
   const navigate = useNavigate();
-  const { data: ageGroups } = trpc.ageGroup.list.useQuery();
   const { data: characters } = trpc.character.list.useQuery();
   const { data: safetyHeaders } = trpc.safety.active.useQuery();
-
+  const childSession = trpc.auth.childMe.useQuery(undefined, { retry: false });
+  const stories = trpc.story.list.useQuery(undefined, { enabled: !!childSession.data, retry: false });
+  const logout = trpc.auth.childLogout.useMutation({ onSuccess: () => navigate("/child-login") });
   useEffect(() => {
-    const session = localStorage.getItem("childSession");
-    if (!session) {
-      navigate("/child-login");
-    }
-  }, [navigate]);
+    if (!childSession.isLoading && !childSession.data) navigate("/child-login", { replace: true });
+  }, [childSession.data, childSession.isLoading, navigate]);
 
   const handleLogout = () => {
-    localStorage.removeItem("childSession");
-    navigate("/child-login");
+    logout.mutate();
   };
 
   const fadeIn = {
@@ -102,16 +98,14 @@ export default function ChildDashboard() {
             variants={fadeIn}
             custom={1}
           >
-            <Link to="/child/read/1">
+            <Link to={stories.data?.[0] ? `/child/read/${stories.data[0].id}` : "/child"} aria-disabled={!stories.data?.[0]} onClick={(event) => { if (!stories.data?.[0]) event.preventDefault(); }}>
               <Card className="overflow-hidden hover:shadow-xl transition-all cursor-pointer group border-4 border-amber-200 hover:border-amber-300">
                 <div className="h-32 bg-gradient-to-br from-amber-300 to-orange-300 flex items-center justify-center">
                   <BookOpen className="h-16 w-16 text-white group-hover:scale-110 transition-transform" />
                 </div>
                 <CardContent className="p-6 text-center">
                   <h2 className="text-xl font-bold text-gray-900 mb-2">Read Stories</h2>
-                  <p className="text-sm text-gray-500">
-                    Explore amazing stories with Chindela and friends!
-                  </p>
+                  <p className="text-sm text-gray-500">{stories.isLoading ? "Finding your stories…" : stories.data?.length ? "Explore your available stories!" : "Ask your parent to activate a subscription to unlock stories."}</p>
                 </CardContent>
               </Card>
             </Link>
@@ -182,96 +176,7 @@ export default function ChildDashboard() {
                   </CardContent>
                 </Card>
               </motion.div>
-            )) || (
-              <>
-                {["Chindela", "Silibidi", "Zuri"].map((name, i) => (
-                  <motion.div
-                    key={name}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.4 + i * 0.1 }}
-                  >
-                    <Card className="text-center overflow-hidden">
-                      <div
-                        className={`w-full h-24 flex items-center justify-center text-white text-2xl font-bold ${
-                          i === 0
-                            ? "bg-gradient-to-br from-amber-400 to-orange-400"
-                            : i === 1
-                            ? "bg-gradient-to-br from-green-400 to-emerald-400"
-                            : "bg-gradient-to-br from-blue-400 to-cyan-400"
-                        }`}
-                      >
-                        {name[0]}
-                      </div>
-                      <CardContent className="p-3">
-                        <p className="font-bold text-sm">{name}</p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {i === 0
-                            ? "Roar with kindness!"
-                            : i === 1
-                            ? "Let's swing into learning!"
-                            : "Big hearts make big changes!"}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-              </>
-            )}
-          </div>
-        </motion.div>
-
-        {/* Age Groups */}
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={fadeIn}
-          custom={4}
-        >
-          <h2 className="text-2xl font-bold text-center mb-6">
-            <Trophy className="h-6 w-6 inline text-amber-500 mr-2" />
-            Choose Your Age Group
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            {ageGroups?.map((ag, i) => (
-              <motion.div
-                key={ag.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 + i * 0.05 }}
-              >
-                <Card
-                  className="text-center cursor-pointer hover:shadow-lg transition-all border-2 border-transparent hover:border-amber-300"
-                  onClick={() => navigate(`/stories?age=${ag.id}`)}
-                >
-                  <CardContent className="p-4">
-                    <div
-                      className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center text-white font-bold"
-                      style={{ backgroundColor: ag.color || "#FFB347" }}
-                    >
-                      {ag.minAge}+
-                    </div>
-                    <p className="font-medium text-sm">{ag.name}</p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )) || (
-              ["3-4", "5-7", "8-10", "11-13", "14-16", "18+"].map((age, i) => (
-                <motion.div
-                  key={age}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 + i * 0.05 }}
-                >
-                  <Card className="text-center cursor-pointer hover:shadow-lg transition-all">
-                    <CardContent className="p-4">
-                      <p className="font-bold text-lg text-amber-600">{age}</p>
-                      <p className="text-xs text-gray-500">years</p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))
-            )}
+            ))}
           </div>
         </motion.div>
       </div>

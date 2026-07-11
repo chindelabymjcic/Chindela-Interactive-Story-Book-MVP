@@ -13,12 +13,13 @@ import {
 } from "drizzle-orm/mysql-core";
 
 // ============== USERS ==============
-// Admin and Parent users (authenticated via OAuth)
+// Platform-managed parent and administrator accounts.
 export const users = mysqlTable("users", {
   id: serial("id").primaryKey(),
-  unionId: varchar("unionId", { length: 255 }).notNull().unique(),
   name: varchar("name", { length: 255 }),
-  email: varchar("email", { length: 320 }),
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+  emailVerifiedAt: timestamp("email_verified_at"),
   avatar: text("avatar"),
   role: mysqlEnum("role", ["admin", "parent"]).default("parent").notNull(),
   phone: varchar("phone", { length: 50 }),
@@ -53,7 +54,7 @@ export const children = mysqlTable("children", {
   id: serial("id").primaryKey(),
   parentId: bigint("parent_id", { mode: "number", unsigned: true }).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
-  pin: varchar("pin", { length: 10 }).notNull(), // 4-digit PIN for login
+  pinHash: varchar("pin_hash", { length: 255 }).notNull(),
   avatar: text("avatar"),
   ageGroupId: bigint("age_group_id", { mode: "number", unsigned: true }).notNull(),
   age: int("age").notNull(),

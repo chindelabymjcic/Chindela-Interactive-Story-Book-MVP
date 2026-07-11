@@ -72,4 +72,10 @@
   body {
     @apply bg-background text-foreground;
   }
+  html, body, #root {
+    min-height: 100%;
+  }
+  button, [role="button"], a, input, textarea, select {
+    -webkit-tap-highlight-color: transparent;
+  }
 }

@@ -22,12 +22,9 @@ export async function findChildById(id: number) {
   });
 }
 
-export async function findChildByPinAndParentId(pin: string, parentId: number) {
+export async function findChildForLogin(id: number) {
   return getDb().query.children.findFirst({
-    where: and(
-      eq(schema.children.pin, pin),
-      eq(schema.children.parentId, parentId)
-    ),
+    where: and(eq(schema.children.id, id), eq(schema.children.isActive, true)),
     with: {
       ageGroup: true,
     },

@@ -11,7 +11,9 @@ export function getSessionCookieOptions(headers: Headers): CookieOptions {
   return {
     httpOnly: true,
     path: "/",
-    sameSite: localhost ? "Lax" : "None",
+    // We do not use cross-site cookie authentication. Lax prevents CSRF while
+    // still supporting ordinary top-level navigation back to this application.
+    sameSite: "Lax",
     secure: !localhost,
   };
 }

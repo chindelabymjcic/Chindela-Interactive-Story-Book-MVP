@@ -7,6 +7,7 @@ import {
   updateChild,
   deleteChild,
 } from "./queries/children";
+import { hashSecret } from "./auth";
 
 export const childRouter = createRouter({
   list: authedQuery.query(async ({ ctx }) => {
@@ -37,6 +38,7 @@ export const childRouter = createRouter({
     .mutation(async ({ input, ctx }) => {
       return createChild({
         ...input,
+        pinHash: await hashSecret(input.pin),
         parentId: ctx.user.id,
       });
     }),
@@ -55,12 +57,12 @@ export const childRouter = createRouter({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const { id, ...data } = input;
+      const { id, pin, ...data } = input;
       const child = await findChildById(id);
       if (!child || child.parentId !== ctx.user.id) {
         throw new Error("Child not found");
       }
-      return updateChild(id, data);
+      return updateChild(id, { ...data, ...(pin ? { pinHash: await hashSecret(pin) } : {}) });
     }),
 
   delete: authedQuery

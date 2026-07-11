@@ -42,12 +42,6 @@ export default function Subscriptions() {
     },
   });
 
-  const completePayment = trpc.subscription.completePayment.useMutation({
-    onSuccess: () => {
-      utils.subscription.list.invalidate();
-    },
-  });
-
   const durations = [
     { value: 1, label: "1 Month", price: 1 },
     { value: 3, label: "3 Months", price: 3 },
@@ -64,12 +58,8 @@ export default function Subscriptions() {
     createSub.mutate({
       childId: parseInt(selectedChild),
       ageGroupId: parseInt(selectedAgeGroup),
-      duration: parseInt(selectedDuration),
+      duration: parseInt(selectedDuration) as 1 | 3 | 6 | 12,
     });
-  };
-
-  const handlePayment = (subId: number, paymentId: number) => {
-    completePayment.mutate({ subscriptionId: subId, paymentId });
   };
 
   const getStatusIcon = (status: string) => {
@@ -177,20 +167,7 @@ export default function Subscriptions() {
                     {createSub.isPending ? "Processing..." : "Subscribe Now"}
                   </Button>
 
-                  {createSub.data && (
-                    <Button
-                      onClick={() =>
-                        handlePayment(
-                          createSub.data.subscription!.id,
-                          createSub.data.paymentId
-                        )
-                      }
-                      variant="outline"
-                      className="w-full"
-                    >
-                      Simulate Payment
-                    </Button>
-                  )}
+                  {createSub.data && <p className="text-sm text-amber-700">Payment checkout is not configured yet. Your subscription is pending.</p>}
                 </CardContent>
               </Card>
 
@@ -277,21 +254,6 @@ export default function Subscriptions() {
                         </div>
                       </div>
 
-                      {sub.status === "pending" && (
-                        <Button
-                          onClick={() => {
-                            const payment = sub.payments?.[0];
-                            if (payment) {
-                              handlePayment(sub.id, payment.id);
-                            }
-                          }}
-                          variant="outline"
-                          size="sm"
-                          className="mt-4"
-                        >
-                          Complete Payment
-                        </Button>
-                      )}
                     </CardContent>
                   </Card>
                 )) || (

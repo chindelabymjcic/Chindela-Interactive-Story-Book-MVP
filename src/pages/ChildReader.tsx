@@ -3,7 +3,7 @@ import { trpc } from "@/providers/trpc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -25,12 +25,10 @@ export default function ChildReader() {
 
   const [currentPage, setCurrentPage] = useState(0);
 
+  const childSession = trpc.auth.childMe.useQuery(undefined, { retry: false });
   useEffect(() => {
-    const session = localStorage.getItem("childSession");
-    if (!session) {
-      navigate("/child-login");
-    }
-  }, [navigate]);
+    if (!childSession.isLoading && !childSession.data) navigate("/child-login", { replace: true });
+  }, [childSession.data, childSession.isLoading, navigate]);
 
   if (!story) {
     return (

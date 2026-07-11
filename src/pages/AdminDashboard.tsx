@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import {
@@ -509,6 +510,7 @@ function CharactersTab() {
   const { data: characters } = trpc.character.list.useQuery();
   const utils = trpc.useUtils();
   const [isOpen, setIsOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState({
     name: "", slug: "", description: "", personality: "", catchphrase: "", color: "#FFB347",
   });
@@ -520,6 +522,14 @@ function CharactersTab() {
       setForm({ name: "", slug: "", description: "", personality: "", catchphrase: "", color: "#FFB347" });
     },
   });
+  const updateMutation = trpc.character.update.useMutation({ onSuccess: () => { utils.character.list.invalidate(); setIsOpen(false); setEditingId(null); } });
+  const deleteMutation = trpc.character.delete.useMutation({ onSuccess: () => utils.character.list.invalidate() });
+  const resetForm = () => setForm({ name: "", slug: "", description: "", personality: "", catchphrase: "", color: "#FFB347" });
+  const edit = (character: any) => {
+    setEditingId(character.id);
+    setForm({ name: character.name, slug: character.slug, description: character.description || "", personality: character.personality || "", catchphrase: character.catchphrase || "", color: character.color || "#FFB347" });
+    setIsOpen(true);
+  };
 
   return (
     <div className="space-y-4">
@@ -527,10 +537,10 @@ function CharactersTab() {
         <h2 className="text-xl font-semibold">Characters</h2>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
-            <Button><Plus className="h-4 w-4 mr-2" />Add Character</Button>
+            <Button onClick={() => { resetForm(); setEditingId(null); }}><Plus className="h-4 w-4 mr-2" />Add Character</Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>Create Character</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editingId ? "Edit Character" : "Create Character"}</DialogTitle></DialogHeader>
             <div className="space-y-4 py-4">
               <Input placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
               <Input placeholder="Slug (e.g., chindela)" value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} />
@@ -538,8 +548,8 @@ function CharactersTab() {
               <Textarea placeholder="Personality" value={form.personality} onChange={(e) => setForm({ ...form, personality: e.target.value })} />
               <Input placeholder="Catchphrase" value={form.catchphrase} onChange={(e) => setForm({ ...form, catchphrase: e.target.value })} />
               <Input type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} />
-              <Button onClick={() => createMutation.mutate(form)} disabled={!form.name || !form.slug} className="w-full">
-                Create Character
+              <Button onClick={() => editingId ? updateMutation.mutate({ id: editingId, ...form }) : createMutation.mutate(form)} disabled={!form.name || !form.slug || createMutation.isPending || updateMutation.isPending} className="w-full">
+                {editingId ? "Save Character" : "Create Character"}
               </Button>
             </div>
           </DialogContent>
@@ -569,6 +579,10 @@ function CharactersTab() {
               <Badge className="mt-3" variant={char.isActive ? "default" : "secondary"}>
                 {char.isActive ? "Active" : "Inactive"}
               </Badge>
+              <div className="mt-3 flex justify-end gap-1">
+                <Button variant="ghost" size="sm" onClick={() => edit(char)} aria-label={`Edit ${char.name}`}><Pencil className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => deleteMutation.mutate({ id: char.id })} aria-label={`Delete ${char.name}`}><Trash2 className="h-4 w-4 text-red-500" /></Button>
+              </div>
             </CardContent>
           </Card>
         )) || (
@@ -594,6 +608,8 @@ function SafetyTab() {
       setMessage("");
     },
   });
+  const updateMutation = trpc.safety.update.useMutation({ onSuccess: () => utils.safety.list.invalidate() });
+  const deleteMutation = trpc.safety.delete.useMutation({ onSuccess: () => utils.safety.list.invalidate() });
 
   return (
     <div className="space-y-4">
@@ -632,6 +648,8 @@ function SafetyTab() {
                 <Badge variant={header.isActive ? "default" : "secondary"}>
                   {header.isActive ? "Active" : "Inactive"}
                 </Badge>
+                <Switch checked={header.isActive} onCheckedChange={(isActive) => updateMutation.mutate({ id: header.id, isActive })} aria-label={`Toggle ${header.message}`} />
+                <Button variant="ghost" size="sm" onClick={() => deleteMutation.mutate({ id: header.id })} aria-label="Delete safety header"><Trash2 className="h-4 w-4 text-red-500" /></Button>
               </div>
             </CardContent>
           </Card>
@@ -647,6 +665,7 @@ function SafetyTab() {
 function YearsTab() {
   const { data: years } = trpc.contentYear.list.useQuery();
   const [isOpen, setIsOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [year, setYear] = useState("");
   const [label, setLabel] = useState("");
   const utils = trpc.useUtils();
@@ -655,10 +674,12 @@ function YearsTab() {
     onSuccess: () => {
       utils.contentYear.list.invalidate();
       setIsOpen(false);
+      setEditingId(null);
       setYear("");
       setLabel("");
     },
   });
+  const updateMutation = trpc.contentYear.update.useMutation({ onSuccess: () => utils.contentYear.list.invalidate() });
 
   return (
     <div className="space-y-4">
@@ -666,15 +687,15 @@ function YearsTab() {
         <h2 className="text-xl font-semibold">Content Years</h2>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
-            <Button><Plus className="h-4 w-4 mr-2" />Add Year</Button>
+            <Button onClick={() => { setEditingId(null); setYear(""); setLabel(""); }}><Plus className="h-4 w-4 mr-2" />Add Year</Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>Create Content Year</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editingId ? "Edit Content Year" : "Create Content Year"}</DialogTitle></DialogHeader>
             <div className="space-y-4 py-4">
               <Input type="number" placeholder="Year (e.g., 2025)" value={year} onChange={(e) => setYear(e.target.value)} />
               <Input placeholder="Label (e.g., 2025 - Year of Kindness)" value={label} onChange={(e) => setLabel(e.target.value)} />
-              <Button onClick={() => createMutation.mutate({ year: parseInt(year), label })} disabled={!year || !label} className="w-full">
-                Create Year
+              <Button onClick={() => editingId ? updateMutation.mutate({ id: editingId, year: parseInt(year), label }) : createMutation.mutate({ year: parseInt(year), label })} disabled={!year || !label || createMutation.isPending || updateMutation.isPending} className="w-full">
+                {editingId ? "Save Year" : "Create Year"}
               </Button>
             </div>
           </DialogContent>
@@ -693,6 +714,10 @@ function YearsTab() {
               <Badge variant={y.isActive ? "default" : "secondary"}>
                 {y.isActive ? "Active" : "Inactive"}
               </Badge>
+              <div className="mt-3 flex items-center justify-between">
+                <Switch checked={y.isActive} onCheckedChange={(isActive) => updateMutation.mutate({ id: y.id, isActive })} aria-label={`Toggle ${y.label}`} />
+                <Button variant="ghost" size="sm" onClick={() => { setEditingId(y.id); setYear(String(y.year)); setLabel(y.label); setIsOpen(true); }} aria-label={`Edit ${y.label}`}><Pencil className="h-4 w-4" /></Button>
+              </div>
             </CardContent>
           </Card>
         )) || (

@@ -91,7 +91,7 @@ export default function Home() {
                   alt="Chindela Storybook"
                   className="w-full h-[400px] object-cover"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&q=80";
+                    (e.target as HTMLImageElement).style.display = "none";
                   }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />

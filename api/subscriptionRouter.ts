@@ -5,12 +5,10 @@ import {
   findActiveSubscription,
   createSubscription,
   findSubscriptionById,
-  updateSubscription,
   cancelSubscription,
   createPayment,
   findPaymentsByParent,
 } from "./queries/subscriptions";
-import { createNotification } from "./queries/notifications";
 
 export const subscriptionRouter = createRouter({
   list: authedQuery.query(async ({ ctx }) => {
@@ -34,7 +32,7 @@ export const subscriptionRouter = createRouter({
       z.object({
         childId: z.number(),
         ageGroupId: z.number(),
-        duration: z.number().min(1).max(12),
+        duration: z.union([z.literal(1), z.literal(3), z.literal(6), z.literal(12)]),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -76,32 +74,6 @@ export const subscriptionRouter = createRouter({
       return { subscription, paymentId };
     }),
 
-  // Simulate payment completion (in production, this would be Stripe webhook)
-  completePayment: authedQuery
-    .input(z.object({ subscriptionId: z.number(), paymentId: z.number() }))
-    .mutation(async ({ input, ctx }) => {
-      const { updatePaymentStatus } = await import("./queries/subscriptions");
-      
-      await updatePaymentStatus(input.paymentId, "completed", {
-        paidAt: new Date(),
-      });
-
-      const subscription = await updateSubscription(input.subscriptionId, {
-        status: "active",
-      });
-
-      // Create notification
-      await createNotification({
-        userId: ctx.user.id,
-        childId: subscription?.childId,
-        type: "system",
-        title: "Subscription Activated!",
-        message: `Your subscription has been successfully activated for ${subscription?.duration} months.`,
-        relatedId: subscription?.id,
-      });
-
-      return subscription;
-    }),
 
   cancel: authedQuery
     .input(z.object({ id: z.number() }))

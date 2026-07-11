@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createRouter, authedQuery, publicQuery } from "./middleware";
+import { createRouter, authedQuery, childQuery } from "./middleware";
 import {
   findDiaryEntriesByChild,
   createDiaryEntry,
@@ -10,45 +10,10 @@ import {
 } from "./queries/diary";
 import { incrementChildStats } from "./queries/children";
 import { createNotification } from "./queries/notifications";
-
-// Simulated AI feedback generator (replace with real Gemini API)
-async function generateAIFeedback(_entryText: string, childName: string, characterName: string) {
-  const char = characterName || "Chindela";
-  
-  // Positive encouragement patterns
-  const encouragements = [
-    `Wow, ${childName}! That was such a kind thing you did! ${char} is so proud of you!`,
-    `Amazing work, ${childName}! You're becoming such a wonderful person! ${char} noticed your kindness!`,
-    `${childName}, what a beautiful act of kindness! ${char} thinks you're absolutely wonderful!`,
-    `That's fantastic, ${childName}! ${char} loves seeing you spread kindness everywhere you go!`,
-  ];
-
-  const reflections = [
-    "Think about how your kindness made someone else feel. How did it make YOU feel inside?",
-    "When we do good things, we create a chain of happiness. Who might you inspire to be kind too?",
-    "Every small act of kindness is like planting a seed. What kind of garden are you growing?",
-    "Your kindness is like a superpower! How can you use it again tomorrow?",
-  ];
-
-  const suggestions = [
-    "Try giving someone a compliment today - it costs nothing but means everything!",
-    "Help tidy up without being asked - it's a wonderful surprise for your family!",
-    "Draw a picture for someone you care about - art is love you can see!",
-    "Share something you love with a friend - sharing doubles the joy!",
-  ];
-
-  const randomIndex = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
-
-  return {
-    positiveFeedback: randomIndex(encouragements),
-    reflectionGuidance: randomIndex(reflections),
-    encouragement: `Keep shining bright, ${childName}! The world needs more people like you!`,
-    safeSuggestions: randomIndex(suggestions),
-    characterName: char,
-  };
-}
+import { generateTutorFeedback } from "./lib/gemini";
 
 export const diaryRouter = createRouter({
+  childEntries: childQuery.query(async ({ ctx }) => findDiaryEntriesByChild(ctx.child.id)),
   list: authedQuery
     .input(z.object({ childId: z.number() }))
     .query(async ({ input, ctx }) => {
@@ -61,23 +26,23 @@ export const diaryRouter = createRouter({
       return findDiaryEntriesByChild(input.childId);
     }),
 
-  create: publicQuery
+  create: childQuery
     .input(
       z.object({
         childId: z.number(),
         storyId: z.number().optional(),
         lessonId: z.number().optional(),
-        textContent: z.string().optional(),
+        textContent: z.string().trim().min(1).max(4_000),
         audioUrl: z.string().optional(),
         imageUrl: z.string().optional(),
-        mood: z.string().optional(),
-        entryDate: z.string(), // ISO date string
+        mood: z.enum(["happy", "excited", "calm", "loved", "sad"]).optional(),
+        entryDate: z.string().datetime(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { findChildById } = await import("./queries/children");
       const child = await findChildById(input.childId);
-      if (!child) throw new Error("Child not found");
+      if (!child || child.id !== ctx.child.id) throw new Error("Unauthorized");
 
       const entry = await createDiaryEntry({
         childId: input.childId,
@@ -94,8 +59,8 @@ export const diaryRouter = createRouter({
       await incrementChildStats(input.childId);
 
       // Generate AI feedback
-      const feedback = await generateAIFeedback(
-        input.textContent || "",
+      const feedback = await generateTutorFeedback(
+        input.textContent,
         child.name,
         child.favoriteCharacter || "Chindela"
       );
@@ -137,15 +102,18 @@ export const diaryRouter = createRouter({
       return findAIFeedbackByChild(input.childId);
     }),
 
-  undeliveredFeedback: publicQuery
+  undeliveredFeedback: childQuery
     .input(z.object({ childId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      if (input.childId !== ctx.child.id) throw new Error("Unauthorized");
       return findUndeliveredFeedback(input.childId);
     }),
 
-  markFeedbackDelivered: publicQuery
+  markFeedbackDelivered: childQuery
     .input(z.object({ feedbackId: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      const feedback = await findUndeliveredFeedback(ctx.child.id);
+      if (!feedback.some((item) => item.id === input.feedbackId)) throw new Error("Unauthorized");
       await markFeedbackAsDelivered(input.feedbackId);
       return { success: true };
     }),

@@ -40,3 +40,18 @@ function requireRole(role: string) {
 
 export const authedQuery = t.procedure.use(requireAuth);
 export const adminQuery = authedQuery.use(requireRole("admin"));
+
+const requireChild = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.child) throw new TRPCError({ code: "UNAUTHORIZED", message: ErrorMessages.unauthenticated });
+  return next({ ctx: { ...ctx, child: ctx.child } });
+});
+export const childQuery = t.procedure.use(requireChild);
+
+const requireContentAccess = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.user && !ctx.child) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: ErrorMessages.unauthenticated });
+  }
+  return next({ ctx });
+});
+
+export const contentQuery = t.procedure.use(requireContentAccess);

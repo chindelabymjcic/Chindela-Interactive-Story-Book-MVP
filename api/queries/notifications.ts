@@ -31,11 +31,11 @@ export async function createNotification(data: InsertNotification) {
   return result.id;
 }
 
-export async function markNotificationAsRead(id: number) {
+export async function markNotificationAsRead(id: number, userId: number) {
   await getDb()
     .update(schema.notifications)
     .set({ isRead: true })
-    .where(eq(schema.notifications.id, id));
+    .where(and(eq(schema.notifications.id, id), eq(schema.notifications.userId, userId)));
 }
 
 export async function markAllNotificationsAsRead(userId: number) {

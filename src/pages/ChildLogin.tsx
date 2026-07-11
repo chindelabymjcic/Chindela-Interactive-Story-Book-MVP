@@ -5,11 +5,15 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { BookOpen, Delete, ArrowLeft } from "lucide-react";
 import { Link } from "react-router";
+import { Input } from "@/components/ui/input";
+import { trpc } from "@/providers/trpc";
 
 export default function ChildLogin() {
   const navigate = useNavigate();
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
+  const [childId, setChildId] = useState("");
+  const login = trpc.auth.childLogin.useMutation({ onSuccess: () => navigate("/child"), onError: () => { setError("That child ID or PIN is not correct."); setPin(""); } });
 
   // In a real app, this would validate against the database
   // For now, we'll use a simple demo PIN system
@@ -20,15 +24,9 @@ export default function ChildLogin() {
       setError("");
 
       if (newPin.length === 4) {
-        // Demo: any 4-digit PIN works and stores a "session"
-        // In production, this would validate against the child's PIN in the database
-        setTimeout(() => {
-          localStorage.setItem("childSession", JSON.stringify({
-            pin: newPin,
-            loginTime: new Date().toISOString(),
-          }));
-          navigate("/child");
-        }, 300);
+        const id = Number(childId);
+        if (!Number.isInteger(id) || id < 1) { setError("Enter your child ID first."); setPin(""); return; }
+        login.mutate({ childId: id, pin: newPin });
       }
     }
   };
@@ -68,6 +66,7 @@ export default function ChildLogin() {
             <p className="text-sm text-gray-500">Enter your 4-digit PIN</p>
           </CardHeader>
           <CardContent className="space-y-6">
+            <Input type="number" min="1" value={childId} onChange={(e) => setChildId(e.target.value)} placeholder="Child ID (from your parent)" aria-label="Child ID" />
             {/* PIN Display */}
             <div className="flex justify-center gap-3">
               {[0, 1, 2, 3].map((i) => (

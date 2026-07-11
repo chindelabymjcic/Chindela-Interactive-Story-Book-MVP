@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, gte } from "drizzle-orm";
 import * as schema from "@db/schema";
 import type { InsertSubscription, InsertPayment } from "@db/schema";
 import { getDb } from "./connection";
@@ -21,11 +21,16 @@ export async function findActiveSubscription(childId: number, ageGroupId: number
       eq(schema.subscriptions.childId, childId),
       eq(schema.subscriptions.ageGroupId, ageGroupId),
       eq(schema.subscriptions.status, "active"),
+      gte(schema.subscriptions.endDate, new Date()),
     ),
     with: {
       ageGroup: true,
     },
   });
+}
+
+export async function hasActiveEntitlement(childId: number, ageGroupId: number) {
+  return Boolean(await findActiveSubscription(childId, ageGroupId));
 }
 
 export async function createSubscription(data: InsertSubscription) {
