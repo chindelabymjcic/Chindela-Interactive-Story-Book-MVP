@@ -14,6 +14,7 @@ import {
   Trophy,
   Settings,
   Check,
+  AlertTriangle,
 } from "lucide-react";
 
 const typeConfig: Record<string, { icon: any; color: string; bg: string }> = {
@@ -23,6 +24,8 @@ const typeConfig: Record<string, { icon: any; color: string; bg: string }> = {
   safety_alert: { icon: Shield, color: "text-red-500", bg: "bg-red-50" },
   milestone: { icon: Trophy, color: "text-green-500", bg: "bg-green-50" },
   system: { icon: Settings, color: "text-gray-500", bg: "bg-gray-50" },
+  payment_succeeded: { icon: Check, color: "text-green-500", bg: "bg-green-50" },
+  payment_failed: { icon: AlertTriangle, color: "text-red-500", bg: "bg-red-50" },
 };
 
 export default function Notifications() {

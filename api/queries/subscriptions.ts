@@ -52,6 +52,17 @@ export async function findSubscriptionById(id: number) {
   });
 }
 
+export async function findSubscriptionByStripeId(stripeSubscriptionId: string) {
+  return getDb().query.subscriptions.findFirst({
+    where: eq(schema.subscriptions.stripeSubscriptionId, stripeSubscriptionId),
+    with: {
+      child: true,
+      ageGroup: true,
+      payments: true,
+    },
+  });
+}
+
 export async function updateSubscription(id: number, data: Partial<InsertSubscription>) {
   await getDb()
     .update(schema.subscriptions)

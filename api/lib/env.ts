@@ -16,4 +16,8 @@ export const env = {
   adminBootstrapToken: process.env.ADMIN_BOOTSTRAP_TOKEN?.trim() ?? "",
   geminiApiKey: process.env.GEMINI_API_KEY?.trim() ?? "",
   geminiModel: process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash",
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY?.trim() ?? "",
+  stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY?.trim() ?? "",
+  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET?.trim() ?? "",
+  appUrl: process.env.APP_URL?.trim() || "http://localhost:3000",
 };

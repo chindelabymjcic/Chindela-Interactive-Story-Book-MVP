@@ -11,26 +11,34 @@ import {
   date,
   decimal,
   index,
+  uniqueIndex,
 } from "drizzle-orm/mysql-core";
 
 // ============== USERS ==============
 // Platform-managed parent and administrator accounts.
-export const users = mysqlTable("users", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 255 }),
-  email: varchar("email", { length: 320 }).notNull().unique(),
-  passwordHash: varchar("password_hash", { length: 255 }).notNull(),
-  emailVerifiedAt: timestamp("email_verified_at"),
-  avatar: text("avatar"),
-  role: mysqlEnum("role", ["admin", "parent"]).default("parent").notNull(),
-  phone: varchar("phone", { length: 50 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt")
-    .defaultNow()
-    .notNull()
-    .$onUpdate(() => new Date()),
-  lastSignInAt: timestamp("lastSignInAt").defaultNow().notNull(),
-});
+export const users = mysqlTable(
+  "users",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 255 }),
+    email: varchar("email", { length: 320 }).notNull().unique(),
+    passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+    emailVerifiedAt: timestamp("email_verified_at"),
+    avatar: text("avatar"),
+    role: mysqlEnum("role", ["admin", "parent"]).default("parent").notNull(),
+    phone: varchar("phone", { length: 50 }),
+    // One Stripe Customer per parent, created lazily on first checkout, reused
+    // for every subsequent subscription so we never create duplicate customers.
+    stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+    lastSignInAt: timestamp("lastSignInAt").defaultNow().notNull(),
+  },
+  (table) => [uniqueIndex("users_stripe_customer_id_idx").on(table.stripeCustomerId)],
+);
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -320,6 +328,8 @@ export const notifications = mysqlTable(
       "safety_alert",
       "milestone",
       "system",
+      "payment_succeeded",
+      "payment_failed",
     ]).notNull(),
     title: varchar("title", { length: 255 }).notNull(),
     message: text("message").notNull(),
@@ -362,7 +372,10 @@ export const subscriptions = mysqlTable(
     status: mysqlEnum("status", ["active", "expired", "cancelled", "pending"]).default("pending").notNull(),
     startDate: date("start_date"),
     endDate: date("end_date"),
-    stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }),
+    // A subscription has many payments/invoices over its life, so a single
+    // PaymentIntent id doesn't belong here -- that concept lives on `payments`.
+    // This stores the recurring Stripe Subscription object's id instead.
+    stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 }),
     isAutoRenew: boolean("is_auto_renew").default(false).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt")
@@ -375,6 +388,7 @@ export const subscriptions = mysqlTable(
     index("subscriptions_child_id_idx").on(table.childId),
     index("subscriptions_age_group_id_idx").on(table.ageGroupId),
     index("subscriptions_status_end_date_idx").on(table.status, table.endDate),
+    uniqueIndex("subscriptions_stripe_subscription_id_idx").on(table.stripeSubscriptionId),
   ],
 );
 

@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { trpc } from "@/providers/trpc";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -28,18 +30,22 @@ export default function Subscriptions() {
   const { data: children } = trpc.child.list.useQuery();
   const { data: ageGroups } = trpc.ageGroup.list.useQuery();
   const { data: subs } = trpc.subscription.list.useQuery();
-  const utils = trpc.useUtils();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const checkoutResult = searchParams.get("checkout");
 
   const [selectedChild, setSelectedChild] = useState("");
   const [selectedAgeGroup, setSelectedAgeGroup] = useState("");
   const [selectedDuration, setSelectedDuration] = useState<string>("1");
+  const [autoRenew, setAutoRenew] = useState(false);
 
+  const utils = trpc.useUtils();
   const createSub = trpc.subscription.create.useMutation({
-    onSuccess: () => {
-      utils.subscription.list.invalidate();
-      setSelectedChild("");
-      setSelectedAgeGroup("");
+    onSuccess: (data) => {
+      if (data.checkoutUrl) window.location.href = data.checkoutUrl;
     },
+  });
+  const cancelSub = trpc.subscription.cancel.useMutation({
+    onSuccess: () => utils.subscription.list.invalidate(),
   });
 
   const durations = [
@@ -59,7 +65,14 @@ export default function Subscriptions() {
       childId: parseInt(selectedChild),
       ageGroupId: parseInt(selectedAgeGroup),
       duration: parseInt(selectedDuration) as 1 | 3 | 6 | 12,
+      isAutoRenew: autoRenew,
     });
+  };
+
+  const dismissCheckoutBanner = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("checkout");
+    setSearchParams(next, { replace: true });
   };
 
   const getStatusIcon = (status: string) => {
@@ -84,6 +97,23 @@ export default function Subscriptions() {
             <h1 className="text-3xl font-bold text-gray-900">Subscriptions</h1>
             <p className="text-gray-500">Manage your children's access</p>
           </div>
+
+          {checkoutResult && (
+            <Card
+              className={`mb-6 border-2 ${checkoutResult === "success" ? "border-green-200 bg-green-50" : "border-gray-200 bg-gray-50"}`}
+            >
+              <CardContent className="p-4 flex items-center justify-between">
+                <p className={`text-sm ${checkoutResult === "success" ? "text-green-700" : "text-gray-600"}`}>
+                  {checkoutResult === "success"
+                    ? "Payment received — your subscription will activate shortly."
+                    : "Checkout was cancelled. No payment was taken."}
+                </p>
+                <Button variant="ghost" size="sm" onClick={dismissCheckoutBanner}>
+                  Dismiss
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           <div className="grid lg:grid-cols-3 gap-8">
             {/* New Subscription */}
@@ -148,6 +178,14 @@ export default function Subscriptions() {
                     </div>
                   </div>
 
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <label htmlFor="auto-renew" className="text-sm font-medium">Auto-renew</label>
+                      <p className="text-xs text-gray-500">Bill £1/month automatically until cancelled</p>
+                    </div>
+                    <Switch id="auto-renew" checked={autoRenew} onCheckedChange={setAutoRenew} />
+                  </div>
+
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-500">Total Price</span>
@@ -156,7 +194,9 @@ export default function Subscriptions() {
                         {selectedPrice}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">£1 per month</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      £1 per month{autoRenew ? ", billed monthly until cancelled" : ` for ${selectedDuration} month(s), then stops automatically`}
+                    </p>
                   </div>
 
                   <Button
@@ -164,10 +204,9 @@ export default function Subscriptions() {
                     disabled={!selectedChild || !selectedAgeGroup || createSub.isPending}
                     className="w-full bg-amber-500 hover:bg-amber-600"
                   >
-                    {createSub.isPending ? "Processing..." : "Subscribe Now"}
+                    {createSub.isPending ? "Redirecting to checkout..." : "Subscribe Now"}
                   </Button>
-
-                  {createSub.data && <p className="text-sm text-amber-700">Payment checkout is not configured yet. Your subscription is pending.</p>}
+                  {createSub.error && <p className="text-sm text-red-600">{createSub.error.message}</p>}
                 </CardContent>
               </Card>
 
@@ -254,6 +293,18 @@ export default function Subscriptions() {
                         </div>
                       </div>
 
+                      {(sub.status === "active" || sub.status === "pending") && (
+                        <div className="mt-4 pt-4 border-t flex justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={cancelSub.isPending}
+                            onClick={() => cancelSub.mutate({ id: sub.id })}
+                          >
+                            Cancel subscription
+                          </Button>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 )) || (

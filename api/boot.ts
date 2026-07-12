@@ -7,6 +7,7 @@ import { createContext } from "./context";
 import { env } from "./lib/env";
 import { rateLimit, sameOrigin, securityHeaders } from "./lib/security";
 import { initAdminBootstrap } from "./lib/bootstrap";
+import { handleStripeWebhook } from "./webhooks/stripe";
 
 initAdminBootstrap();
 
@@ -14,6 +15,10 @@ const app = new Hono<{ Bindings: HttpBindings }>();
 
 app.use("*", securityHeaders);
 app.use(bodyLimit({ maxSize: 50 * 1024 * 1024 }));
+// Registered ahead of /api/trpc/* deliberately: Stripe's webhook POSTs have no
+// browser Origin header and aren't a tRPC envelope, so this must not go
+// through sameOrigin/rateLimit or the tRPC handler.
+app.post("/api/webhooks/stripe", handleStripeWebhook);
 app.use("/api/trpc/*", rateLimit, sameOrigin);
 app.use("/api/trpc/*", async (c) => {
   return fetchRequestHandler({

@@ -24,3 +24,7 @@ export async function findUserById(id: number) {
 export async function updateLastSignIn(id: number) {
   await getDb().update(schema.users).set({ lastSignInAt: new Date() }).where(eq(schema.users.id, id));
 }
+
+export async function setStripeCustomerId(id: number, stripeCustomerId: string) {
+  await getDb().update(schema.users).set({ stripeCustomerId }).where(eq(schema.users.id, id));
+}
