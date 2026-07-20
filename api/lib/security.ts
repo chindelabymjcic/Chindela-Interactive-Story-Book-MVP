@@ -44,10 +44,26 @@ export const rateLimit: MiddlewareHandler = async (c, next) => {
 export const sameOrigin: MiddlewareHandler = async (c, next) => {
   if (!["POST", "PUT", "PATCH", "DELETE"].includes(c.req.method)) return next();
   const origin = c.req.header("origin");
-  // Non-browser clients do not send Origin. Browser mutation requests must be
-  // same-origin, which protects the cookie-authenticated API from CSRF.
-  if (origin && origin !== new URL(c.req.url).origin) {
+  if (!origin) {
+    // Non-browser clients do not send Origin. Browser mutation requests must
+    // be same-origin, which protects the cookie-authenticated API from CSRF.
+    await next();
+    return;
+  }
+  // Behind a reverse proxy (Railway, etc.), TLS terminates at the edge and
+  // the container only ever sees a plain-HTTP request -- c.req.url would
+  // report "http://" even though the browser's real Origin is "https://",
+  // making every same-origin POST fail this check. Trust the standard
+  // forwarded headers the proxy sets to reconstruct the request's real,
+  // externally-visible origin before comparing.
+  const forwardedProto = c.req.header("x-forwarded-proto")?.split(",")[0]?.trim();
+  const forwardedHost = c.req.header("x-forwarded-host")?.split(",")[0]?.trim();
+  const requestOrigin = forwardedProto && forwardedHost
+    ? `${forwardedProto}://${forwardedHost}`
+    : new URL(c.req.url).origin;
+  if (origin !== requestOrigin) {
     return c.json({ error: "Cross-origin requests are not allowed" }, 403);
   }
   await next();
 };
+
