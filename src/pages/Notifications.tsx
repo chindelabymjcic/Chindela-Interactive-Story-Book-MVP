@@ -4,7 +4,10 @@ import Navbar from "@/components/Navbar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { motion } from "framer-motion";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
+import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import {
   Bell,
   BookOpen,
@@ -19,14 +22,14 @@ import {
 } from "lucide-react";
 
 const typeConfig: Record<string, { icon: LucideIcon; color: string; bg: string }> = {
-  diary_entry: { icon: BookOpen, color: "text-purple-500", bg: "bg-purple-50" },
-  ai_feedback: { icon: Sparkles, color: "text-blue-500", bg: "bg-blue-50" },
-  subscription_expiry: { icon: CreditCard, color: "text-amber-500", bg: "bg-amber-50" },
-  safety_alert: { icon: Shield, color: "text-red-500", bg: "bg-red-50" },
-  milestone: { icon: Trophy, color: "text-green-500", bg: "bg-green-50" },
-  system: { icon: Settings, color: "text-gray-500", bg: "bg-gray-50" },
-  payment_succeeded: { icon: Check, color: "text-green-500", bg: "bg-green-50" },
-  payment_failed: { icon: AlertTriangle, color: "text-red-500", bg: "bg-red-50" },
+  diary_entry: { icon: BookOpen, color: "text-secondary-foreground", bg: "bg-secondary/20" },
+  ai_feedback: { icon: Sparkles, color: "text-info", bg: "bg-info/10" },
+  subscription_expiry: { icon: CreditCard, color: "text-warning", bg: "bg-warning/10" },
+  safety_alert: { icon: Shield, color: "text-destructive", bg: "bg-destructive/10" },
+  milestone: { icon: Trophy, color: "text-success", bg: "bg-success/10" },
+  system: { icon: Settings, color: "text-muted-foreground", bg: "bg-muted" },
+  payment_succeeded: { icon: Check, color: "text-success", bg: "bg-success/10" },
+  payment_failed: { icon: AlertTriangle, color: "text-destructive", bg: "bg-destructive/10" },
 };
 
 export default function Notifications() {
@@ -39,37 +42,36 @@ export default function Notifications() {
       utils.notification.list.invalidate();
       utils.notification.unreadCount.invalidate();
     },
+    onError: (e) => toast.error(e.message),
   });
 
   const markAllRead = trpc.notification.markAllRead.useMutation({
     onSuccess: () => {
       utils.notification.list.invalidate();
       utils.notification.unreadCount.invalidate();
+      toast.success("All notifications marked as read.");
     },
+    onError: (e) => toast.error(e.message),
   });
 
   const unreadCount = notifications?.filter((n) => !n.isRead).length || 0;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted/30">
       <Navbar />
       <div className="container mx-auto px-4 py-8">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Notifications</h1>
-              <p className="text-gray-500">
+              <h1 className="font-display text-3xl font-bold text-foreground">Notifications</h1>
+              <p className="text-muted-foreground">
                 {unreadCount > 0
                   ? `You have ${unreadCount} unread notification${unreadCount > 1 ? "s" : ""}`
                   : "All caught up!"}
               </p>
             </div>
             {unreadCount > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => markAllRead.mutate()}
-              >
+              <Button variant="outline" size="sm" onClick={() => markAllRead.mutate()} disabled={markAllRead.isPending}>
                 <Check className="h-4 w-4 mr-2" />
                 Mark all read
               </Button>
@@ -77,65 +79,65 @@ export default function Notifications() {
           </div>
 
           <div className="space-y-3 max-w-3xl">
-            {notifications?.map((notif, i) => {
-              const config = typeConfig[notif.type] || typeConfig.system;
-              const Icon = config.icon;
+            {notifications === undefined ? (
+              <>
+                <Skeleton className="h-20 rounded-xl" />
+                <Skeleton className="h-20 rounded-xl" />
+                <Skeleton className="h-20 rounded-xl" />
+              </>
+            ) : notifications.length === 0 ? (
+              <Empty className="border-2 border-dashed border-border rounded-2xl">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <Bell className="h-6 w-6" />
+                  </EmptyMedia>
+                  <EmptyTitle>You're all caught up!</EmptyTitle>
+                  <EmptyDescription>You'll receive notifications about your child's activity here.</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <AnimatePresence initial={false}>
+                {notifications.map((notif, i) => {
+                  const config = typeConfig[notif.type] || typeConfig.system;
+                  const Icon = config.icon;
 
-              return (
-                <motion.div
-                  key={notif.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                >
-                  <Card
-                    className={`transition-colors ${
-                      !notif.isRead ? "bg-white border-l-4 border-l-amber-400" : "opacity-70"
-                    }`}
-                  >
-                    <CardContent className="p-4 flex items-start gap-4">
-                      <div className={`p-2 rounded-lg ${config.bg} flex-shrink-0`}>
-                        <Icon className={`h-5 w-5 ${config.color}`} />
-                      </div>
+                  return (
+                    <motion.div
+                      key={notif.id}
+                      layout
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ delay: i * 0.04 }}
+                    >
+                      <Card className={`transition-colors ${!notif.isRead ? "bg-card border-l-4 border-l-accent" : "opacity-70"}`}>
+                        <CardContent className="p-4 flex items-start gap-4">
+                          <div className={`p-2 rounded-lg ${config.bg} flex-shrink-0`}>
+                            <Icon className={`h-5 w-5 ${config.color}`} />
+                          </div>
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-medium text-sm">{notif.title}</p>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="font-medium text-sm">{notif.title}</p>
+                              {!notif.isRead && <Badge className="bg-accent text-[10px] h-5">New</Badge>}
+                            </div>
+                            <p className="text-sm text-muted-foreground">{notif.message}</p>
+                            <p className="text-xs text-muted-foreground/70 mt-1">
+                              {notif.createdAt ? new Date(notif.createdAt).toLocaleString() : ""}
+                            </p>
+                          </div>
+
                           {!notif.isRead && (
-                            <Badge variant="default" className="bg-amber-500 text-[10px] h-5">
-                              New
-                            </Badge>
+                            <Button variant="ghost" size="sm" onClick={() => markRead.mutate({ id: notif.id })} aria-label="Mark as read">
+                              <Check className="h-4 w-4 text-muted-foreground" />
+                            </Button>
                           )}
-                        </div>
-                        <p className="text-sm text-gray-500">{notif.message}</p>
-                        <p className="text-xs text-gray-400 mt-1">
-                          {notif.createdAt
-                            ? new Date(notif.createdAt).toLocaleString()
-                            : ""}
-                        </p>
-                      </div>
-
-                      {!notif.isRead && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => markRead.mutate({ id: notif.id })}
-                        >
-                          <Check className="h-4 w-4 text-gray-400" />
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              );
-            }) || (
-              <Card className="p-8 text-center">
-                <Bell className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">No notifications</h3>
-                <p className="text-gray-500">
-                  You'll receive notifications about your child's activity here.
-                </p>
-              </Card>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
             )}
           </div>
         </motion.div>

@@ -46,7 +46,7 @@ export function MediaUploader({ category, value, onChange, label }: MediaUploade
         }}
         onClick={() => !isUploading && inputRef.current?.click()}
         className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
-          isDragging ? "border-amber-500 bg-amber-50" : "border-gray-200 hover:border-gray-300"
+          isDragging ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/40"
         }`}
       >
         <input
@@ -62,11 +62,11 @@ export function MediaUploader({ category, value, onChange, label }: MediaUploade
         />
         {isUploading ? (
           <div className="flex flex-col items-center gap-2 py-2">
-            <Loader2 className="h-5 w-5 animate-spin text-amber-500" />
-            <div className="w-full bg-gray-200 rounded-full h-1.5">
-              <div className="bg-amber-500 h-1.5 rounded-full transition-all" style={{ width: `${progress}%` }} />
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <div className="w-full bg-muted rounded-full h-1.5">
+              <div className="bg-primary h-1.5 rounded-full transition-all" style={{ width: `${progress}%` }} />
             </div>
-            <p className="text-xs text-gray-500">{progress}%</p>
+            <p className="text-xs text-muted-foreground">{progress}%</p>
           </div>
         ) : value ? (
           <div className="flex items-center justify-between gap-2">
@@ -85,13 +85,13 @@ export function MediaUploader({ category, value, onChange, label }: MediaUploade
             </Button>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-1 py-3 text-gray-400">
+          <div className="flex flex-col items-center gap-1 py-3 text-muted-foreground">
             <UploadCloud className="h-6 w-6" />
             <p className="text-xs">Drag &amp; drop or click to upload</p>
           </div>
         )}
       </div>
-      {(error || localError) && <p className="text-xs text-red-600">{error ?? localError}</p>}
+      {(error || localError) && <p className="text-xs text-destructive">{error ?? localError}</p>}
     </div>
   );
 }

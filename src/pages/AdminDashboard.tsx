@@ -31,8 +31,11 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { useState, useRef } from "react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import {
   BookOpen,
   Users,
@@ -56,10 +59,26 @@ import {
   PoundSterling,
   RefreshCw,
   Loader2,
+  LayoutDashboard,
+  Sparkles,
+  IdCard,
 } from "lucide-react";
 import { MediaUploader } from "@/components/admin/MediaUploader";
 import { uploadToPresignedPost } from "@/lib/s3Upload";
 import { MediaCategories, SUBSCRIPTION_PRICE_PER_MONTH_GBP_PENCE, type MediaCategory } from "@contracts/constants";
+
+const TABS = [
+  { value: "overview", label: "Overview", icon: LayoutDashboard },
+  { value: "stories", label: "Stories", icon: BookOpen },
+  { value: "lessons", label: "Lessons", icon: Layers },
+  { value: "characters", label: "Characters", icon: Sparkles },
+  { value: "media", label: "Media", icon: ImageIcon },
+  { value: "ageGroups", label: "Age Groups", icon: Users },
+  { value: "safety", label: "Safety", icon: Shield },
+  { value: "years", label: "Years", icon: Calendar },
+  { value: "subscriptions", label: "Billing", icon: CreditCard },
+  { value: "users", label: "Users", icon: IdCard },
+] as const;
 
 export default function AdminDashboard() {
   const { isLoading } = useAuth();
@@ -67,39 +86,32 @@ export default function AdminDashboard() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500" />
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted/30">
       <Navbar />
       <div className="container mx-auto px-4 py-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-              <p className="text-gray-500">Manage content, users, and platform settings</p>
+              <h1 className="font-display text-3xl font-bold text-foreground">Admin Dashboard</h1>
+              <p className="text-muted-foreground">Manage content, users, and platform settings</p>
             </div>
-            <Badge variant="default" className="bg-amber-500">Admin</Badge>
+            <Badge className="bg-primary">Admin</Badge>
           </div>
 
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 lg:grid-cols-10 lg:w-auto h-auto">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="stories">Stories</TabsTrigger>
-              <TabsTrigger value="lessons">Lessons</TabsTrigger>
-              <TabsTrigger value="characters">Characters</TabsTrigger>
-              <TabsTrigger value="media">Media</TabsTrigger>
-              <TabsTrigger value="ageGroups">Age Groups</TabsTrigger>
-              <TabsTrigger value="safety">Safety</TabsTrigger>
-              <TabsTrigger value="years">Years</TabsTrigger>
-              <TabsTrigger value="subscriptions">Billing</TabsTrigger>
-              <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-5 sm:grid-cols-5 lg:grid-cols-10 lg:w-auto h-auto">
+              {TABS.map((tab) => (
+                <TabsTrigger key={tab.value} value={tab.value} className="gap-1.5 py-2">
+                  <tab.icon className="h-3.5 w-3.5" />
+                  <span className="hidden lg:inline">{tab.label}</span>
+                </TabsTrigger>
+              ))}
             </TabsList>
 
             <TabsContent value="overview">
@@ -144,31 +156,33 @@ function OverviewTab() {
   const { data: stats } = trpc.admin.stats.useQuery();
 
   const statCards = [
-    { label: "Users", value: stats?.users ?? 0, icon: Users, color: "text-blue-500", bg: "bg-blue-50" },
-    { label: "Children", value: stats?.children ?? 0, icon: Users, color: "text-green-500", bg: "bg-green-50" },
-    { label: "Stories", value: stats?.stories ?? 0, icon: BookOpen, color: "text-amber-500", bg: "bg-amber-50" },
-    { label: "Lessons", value: stats?.lessons ?? 0, icon: Layers, color: "text-purple-500", bg: "bg-purple-50" },
-    { label: "Diary Entries", value: stats?.diaryEntries ?? 0, icon: MessageSquare, color: "text-pink-500", bg: "bg-pink-50" },
-    { label: "Active Subs", value: stats?.activeSubscriptions ?? 0, icon: CreditCard, color: "text-emerald-500", bg: "bg-emerald-50" },
+    { label: "Users", value: stats?.users ?? 0, icon: Users, color: "text-info", bg: "bg-info/10" },
+    { label: "Children", value: stats?.children ?? 0, icon: Users, color: "text-success", bg: "bg-success/10" },
+    { label: "Stories", value: stats?.stories ?? 0, icon: BookOpen, color: "text-primary", bg: "bg-primary/10" },
+    { label: "Lessons", value: stats?.lessons ?? 0, icon: Layers, color: "text-accent", bg: "bg-accent/10" },
+    { label: "Diary Entries", value: stats?.diaryEntries ?? 0, icon: MessageSquare, color: "text-secondary-foreground", bg: "bg-secondary/20" },
+    { label: "Active Subs", value: stats?.activeSubscriptions ?? 0, icon: CreditCard, color: "text-success", bg: "bg-success/10" },
   ];
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        {statCards.map((stat) => (
-          <Card key={stat.label}>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">{stat.label}</p>
-                  <p className="text-3xl font-bold mt-1">{stat.value}</p>
+        {statCards.map((stat, i) => (
+          <motion.div key={stat.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
+                    <p className="text-3xl font-bold mt-1">{stat.value}</p>
+                  </div>
+                  <div className={`p-3 rounded-lg ${stat.bg}`}>
+                    <stat.icon className={`h-6 w-6 ${stat.color}`} />
+                  </div>
                 </div>
-                <div className={`p-3 rounded-lg ${stat.bg}`}>
-                  <stat.icon className={`h-6 w-6 ${stat.color}`} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </motion.div>
         ))}
       </div>
 
@@ -187,26 +201,26 @@ function RecentActivity() {
     <Card>
       <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
-          <TrendingUp className="h-5 w-5 text-amber-500" />
+          <TrendingUp className="h-5 w-5 text-primary" />
           Recent Activity
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {activity?.recentDiaryEntries?.map((entry) => (
-            <div key={entry.id} className="flex items-start gap-3 p-3 rounded-lg bg-gray-50">
-              <MessageSquare className="h-4 w-4 text-gray-400 mt-1" />
-              <div>
-                <p className="text-sm font-medium">
-                  {entry.child?.name} submitted a diary entry
-                </p>
-                <p className="text-xs text-gray-500">
-                  {entry.textContent?.substring(0, 80)}...
-                </p>
+          {activity === undefined ? (
+            <Skeleton className="h-16 rounded-lg" />
+          ) : activity.recentDiaryEntries?.length ? (
+            activity.recentDiaryEntries.map((entry) => (
+              <div key={entry.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                <MessageSquare className="h-4 w-4 text-muted-foreground mt-1" />
+                <div>
+                  <p className="text-sm font-medium">{entry.child?.name} submitted a diary entry</p>
+                  <p className="text-xs text-muted-foreground">{entry.textContent?.substring(0, 80)}...</p>
+                </div>
               </div>
-            </div>
-          )) || (
-            <p className="text-sm text-gray-500 text-center py-4">No recent activity</p>
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">No recent activity</p>
           )}
         </div>
       </CardContent>
@@ -221,28 +235,30 @@ function SubscriptionOverview() {
     <Card>
       <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
-          <CreditCard className="h-5 w-5 text-emerald-500" />
+          <CreditCard className="h-5 w-5 text-success" />
           Recent Subscriptions
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {activity?.recentSubscriptions?.map((sub) => (
-            <div key={sub.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
-              <div>
-                <p className="text-sm font-medium">
-                  {sub.child?.name} - {sub.ageGroup?.name}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {sub.duration} months - £{sub.totalPrice}
-                </p>
+          {activity === undefined ? (
+            <Skeleton className="h-16 rounded-lg" />
+          ) : activity.recentSubscriptions?.length ? (
+            activity.recentSubscriptions.map((sub) => (
+              <div key={sub.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                <div>
+                  <p className="text-sm font-medium">
+                    {sub.child?.name} - {sub.ageGroup?.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {sub.duration} months - £{sub.totalPrice}
+                  </p>
+                </div>
+                <Badge variant={sub.status === "active" ? "default" : "secondary"}>{sub.status}</Badge>
               </div>
-              <Badge variant={sub.status === "active" ? "default" : "secondary"}>
-                {sub.status}
-              </Badge>
-            </div>
-          )) || (
-            <p className="text-sm text-gray-500 text-center py-4">No subscriptions yet</p>
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">No subscriptions yet</p>
           )}
         </div>
       </CardContent>
@@ -277,7 +293,9 @@ function StoriesTab() {
       utils.story.list.invalidate();
       setIsDialogOpen(false);
       resetForm();
+      toast.success("Story created!");
     },
+    onError: (e) => toast.error(e.message),
   });
 
   const updateMutation = trpc.story.update.useMutation({
@@ -286,11 +304,17 @@ function StoriesTab() {
       setIsDialogOpen(false);
       setEditingId(null);
       resetForm();
+      toast.success("Story updated!");
     },
+    onError: (e) => toast.error(e.message),
   });
 
   const deleteMutation = trpc.story.delete.useMutation({
-    onSuccess: () => utils.story.list.invalidate(),
+    onSuccess: () => {
+      utils.story.list.invalidate();
+      toast.success("Story deleted.");
+    },
+    onError: (e) => toast.error(e.message),
   });
 
   const resetForm = () => {
@@ -354,10 +378,12 @@ function StoriesTab() {
     setIsDialogOpen(true);
   };
 
+  const pending = createMutation.isPending || updateMutation.isPending;
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Stories</h2>
+        <h2 className="font-display text-xl font-semibold">Stories</h2>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => { resetForm(); setEditingId(null); }}>
@@ -478,10 +504,10 @@ function StoriesTab() {
               </div>
               <Button
                 onClick={handleSubmit}
-                disabled={!form.title || !form.ageGroupId || !form.contentYearId}
+                disabled={!form.title || !form.ageGroupId || !form.contentYearId || pending}
                 className="w-full"
               >
-                {editingId ? "Update" : "Create"} Story
+                {pending ? "Saving…" : editingId ? "Update Story" : "Create Story"}
               </Button>
             </div>
           </DialogContent>
@@ -501,46 +527,64 @@ function StoriesTab() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {stories?.map((story) => (
-                <TableRow key={story.id}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      {story.coverImage ? (
-                        <img src={story.coverImage} alt="" className="h-8 w-8 rounded object-cover" />
-                      ) : (
-                        <div className="h-8 w-8 rounded bg-gray-100 flex items-center justify-center">
-                          <ImageIcon className="h-4 w-4 text-gray-300" />
-                        </div>
-                      )}
-                      {story.title}
-                    </div>
-                  </TableCell>
-                  <TableCell>{story.ageGroup?.name}</TableCell>
-                  <TableCell>Day {story.dayNumber}</TableCell>
-                  <TableCell>
-                    <Badge variant={story.isActive ? "default" : "secondary"}>
-                      {story.isActive ? "Active" : "Inactive"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="sm" onClick={() => startEdit(story)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteMutation.mutate({ id: story.id })}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-400" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              )) || (
+              {stories === undefined ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-gray-500 py-8">
-                    No stories yet. Create your first story!
+                  <TableCell colSpan={5} className="p-4">
+                    <Skeleton className="h-24 rounded-lg" />
                   </TableCell>
                 </TableRow>
+              ) : stories.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="py-8">
+                    <Empty>
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <BookOpen className="h-6 w-6" />
+                        </EmptyMedia>
+                        <EmptyTitle>No stories yet</EmptyTitle>
+                        <EmptyDescription>Create your first story to get started.</EmptyDescription>
+                      </EmptyHeader>
+                    </Empty>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                stories.map((story) => (
+                  <TableRow key={story.id}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {story.coverImage ? (
+                          <img src={story.coverImage} alt="" className="h-8 w-8 rounded object-cover" />
+                        ) : (
+                          <div className="h-8 w-8 rounded bg-muted flex items-center justify-center">
+                            <ImageIcon className="h-4 w-4 text-muted-foreground/50" />
+                          </div>
+                        )}
+                        {story.title}
+                      </div>
+                    </TableCell>
+                    <TableCell>{story.ageGroup?.name}</TableCell>
+                    <TableCell>Day {story.dayNumber}</TableCell>
+                    <TableCell>
+                      <Badge variant={story.isActive ? "default" : "secondary"}>
+                        {story.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="sm" onClick={() => startEdit(story)} aria-label={`Edit ${story.title}`}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteMutation.mutate({ id: story.id })}
+                        disabled={deleteMutation.isPending}
+                        aria-label={`Delete ${story.title}`}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
@@ -564,11 +608,27 @@ function CharactersTab() {
     onSuccess: () => {
       utils.character.list.invalidate();
       setIsOpen(false);
-      setForm({ name: "", slug: "", description: "", personality: "", catchphrase: "", color: "#FFB347", imageUrl: "" });
+      resetForm();
+      toast.success("Character created!");
     },
+    onError: (e) => toast.error(e.message),
   });
-  const updateMutation = trpc.character.update.useMutation({ onSuccess: () => { utils.character.list.invalidate(); setIsOpen(false); setEditingId(null); } });
-  const deleteMutation = trpc.character.delete.useMutation({ onSuccess: () => utils.character.list.invalidate() });
+  const updateMutation = trpc.character.update.useMutation({
+    onSuccess: () => {
+      utils.character.list.invalidate();
+      setIsOpen(false);
+      setEditingId(null);
+      toast.success("Character updated!");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const deleteMutation = trpc.character.delete.useMutation({
+    onSuccess: () => {
+      utils.character.list.invalidate();
+      toast.success("Character deleted.");
+    },
+    onError: (e) => toast.error(e.message),
+  });
   const resetForm = () => setForm({ name: "", slug: "", description: "", personality: "", catchphrase: "", color: "#FFB347", imageUrl: "" });
   const edit = (character: {
     id: number;
@@ -585,10 +645,12 @@ function CharactersTab() {
     setIsOpen(true);
   };
 
+  const pending = createMutation.isPending || updateMutation.isPending;
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Characters</h2>
+        <h2 className="font-display text-xl font-semibold">Characters</h2>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => { resetForm(); setEditingId(null); }}><Plus className="h-4 w-4 mr-2" />Add Character</Button>
@@ -603,47 +665,63 @@ function CharactersTab() {
               <Input placeholder="Catchphrase" value={form.catchphrase} onChange={(e) => setForm({ ...form, catchphrase: e.target.value })} />
               <Input type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} />
               <MediaUploader category="image" label="Character Image" value={form.imageUrl} onChange={(url) => setForm({ ...form, imageUrl: url })} />
-              <Button onClick={() => editingId ? updateMutation.mutate({ id: editingId, ...form }) : createMutation.mutate(form)} disabled={!form.name || !form.slug || createMutation.isPending || updateMutation.isPending} className="w-full">
-                {editingId ? "Save Character" : "Create Character"}
+              <Button onClick={() => editingId ? updateMutation.mutate({ id: editingId, ...form }) : createMutation.mutate(form)} disabled={!form.name || !form.slug || pending} className="w-full">
+                {pending ? "Saving…" : editingId ? "Save Character" : "Create Character"}
               </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {characters?.map((char) => (
-          <Card key={char.id} className="overflow-hidden">
-            <div className="h-2" style={{ backgroundColor: char.color || "#FFB347" }} />
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4 mb-4">
-                {char.imageUrl ? (
-                  <img src={char.imageUrl} alt={char.name} className="w-16 h-16 rounded-full object-cover" />
-                ) : (
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold text-white" style={{ backgroundColor: char.color || "#FFB347" }}>
-                    {char.name?.[0]}
+      {characters === undefined ? (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Skeleton className="h-48 rounded-2xl" />
+          <Skeleton className="h-48 rounded-2xl" />
+          <Skeleton className="h-48 rounded-2xl" />
+        </div>
+      ) : characters.length === 0 ? (
+        <Empty className="border-2 border-dashed border-border rounded-2xl">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Sparkles className="h-6 w-6" />
+            </EmptyMedia>
+            <EmptyTitle>No characters yet</EmptyTitle>
+            <EmptyDescription>Create a character to feature in your stories.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {characters.map((char) => (
+            <Card key={char.id} className="overflow-hidden">
+              <div className="h-2" style={{ backgroundColor: char.color || "#FFB347" }} />
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4 mb-4">
+                  {char.imageUrl ? (
+                    <img src={char.imageUrl} alt={char.name} className="w-16 h-16 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold text-white" style={{ backgroundColor: char.color || "#FFB347" }}>
+                      {char.name?.[0]}
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="font-display font-semibold text-lg">{char.name}</h3>
+                    <p className="text-sm text-muted-foreground">@{char.slug}</p>
                   </div>
-                )}
-                <div>
-                  <h3 className="font-semibold text-lg">{char.name}</h3>
-                  <p className="text-sm text-gray-500">@{char.slug}</p>
                 </div>
-              </div>
-              <p className="text-sm text-gray-600 mb-2">{char.description}</p>
-              <p className="text-sm text-gray-500 italic">"{char.catchphrase}"</p>
-              <Badge className="mt-3" variant={char.isActive ? "default" : "secondary"}>
-                {char.isActive ? "Active" : "Inactive"}
-              </Badge>
-              <div className="mt-3 flex justify-end gap-1">
-                <Button variant="ghost" size="sm" onClick={() => edit(char)} aria-label={`Edit ${char.name}`}><Pencil className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="sm" onClick={() => deleteMutation.mutate({ id: char.id })} aria-label={`Delete ${char.name}`}><Trash2 className="h-4 w-4 text-red-500" /></Button>
-              </div>
-            </CardContent>
-          </Card>
-        )) || (
-          <p className="text-gray-500 col-span-3 text-center py-8">No characters yet.</p>
-        )}
-      </div>
+                <p className="text-sm text-foreground/80 mb-2">{char.description}</p>
+                <p className="text-sm text-muted-foreground italic">"{char.catchphrase}"</p>
+                <Badge className="mt-3" variant={char.isActive ? "default" : "secondary"}>
+                  {char.isActive ? "Active" : "Inactive"}
+                </Badge>
+                <div className="mt-3 flex justify-end gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => edit(char)} aria-label={`Edit ${char.name}`}><Pencil className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="sm" onClick={() => deleteMutation.mutate({ id: char.id })} disabled={deleteMutation.isPending} aria-label={`Delete ${char.name}`}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -661,15 +739,26 @@ function SafetyTab() {
       utils.safety.list.invalidate();
       setIsOpen(false);
       setMessage("");
+      toast.success("Safety header created!");
     },
+    onError: (e) => toast.error(e.message),
   });
-  const updateMutation = trpc.safety.update.useMutation({ onSuccess: () => utils.safety.list.invalidate() });
-  const deleteMutation = trpc.safety.delete.useMutation({ onSuccess: () => utils.safety.list.invalidate() });
+  const updateMutation = trpc.safety.update.useMutation({
+    onSuccess: () => utils.safety.list.invalidate(),
+    onError: (e) => toast.error(e.message),
+  });
+  const deleteMutation = trpc.safety.delete.useMutation({
+    onSuccess: () => {
+      utils.safety.list.invalidate();
+      toast.success("Safety header deleted.");
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Safety Headers</h2>
+        <h2 className="font-display text-xl font-semibold">Safety Headers</h2>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
             <Button><Plus className="h-4 w-4 mr-2" />Add Header</Button>
@@ -682,36 +771,48 @@ function SafetyTab() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
               />
-              <Button onClick={() => createMutation.mutate({ message, isGlobal })} disabled={!message} className="w-full">
-                Create Header
+              <Button onClick={() => createMutation.mutate({ message, isGlobal })} disabled={!message || createMutation.isPending} className="w-full">
+                {createMutation.isPending ? "Creating…" : "Create Header"}
               </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="grid gap-4">
-        {headers?.map((header) => (
-          <Card key={header.id}>
-            <CardContent className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Shield className="h-5 w-5 text-blue-500" />
-                <p className="text-sm">{header.message}</p>
-              </div>
-              <div className="flex gap-2">
-                {header.isGlobal && <Badge variant="outline">Global</Badge>}
-                <Badge variant={header.isActive ? "default" : "secondary"}>
-                  {header.isActive ? "Active" : "Inactive"}
-                </Badge>
-                <Switch checked={header.isActive} onCheckedChange={(isActive) => updateMutation.mutate({ id: header.id, isActive })} aria-label={`Toggle ${header.message}`} />
-                <Button variant="ghost" size="sm" onClick={() => deleteMutation.mutate({ id: header.id })} aria-label="Delete safety header"><Trash2 className="h-4 w-4 text-red-500" /></Button>
-              </div>
-            </CardContent>
-          </Card>
-        )) || (
-          <p className="text-gray-500 text-center py-8">No safety headers yet.</p>
-        )}
-      </div>
+      {headers === undefined ? (
+        <Skeleton className="h-16 rounded-lg" />
+      ) : headers.length === 0 ? (
+        <Empty className="border-2 border-dashed border-border rounded-2xl">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Shield className="h-6 w-6" />
+            </EmptyMedia>
+            <EmptyTitle>No safety headers yet</EmptyTitle>
+            <EmptyDescription>Add a message to display to children while reading.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <div className="grid gap-4">
+          {headers.map((header) => (
+            <Card key={header.id}>
+              <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <Shield className="h-5 w-5 text-info" />
+                  <p className="text-sm">{header.message}</p>
+                </div>
+                <div className="flex gap-2 items-center">
+                  {header.isGlobal && <Badge variant="outline">Global</Badge>}
+                  <Badge variant={header.isActive ? "default" : "secondary"}>
+                    {header.isActive ? "Active" : "Inactive"}
+                  </Badge>
+                  <Switch checked={header.isActive} onCheckedChange={(isActive) => updateMutation.mutate({ id: header.id, isActive })} aria-label={`Toggle ${header.message}`} />
+                  <Button variant="ghost" size="sm" onClick={() => deleteMutation.mutate({ id: header.id })} disabled={deleteMutation.isPending} aria-label="Delete safety header"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -732,15 +833,26 @@ function YearsTab() {
       setEditingId(null);
       setYear("");
       setLabel("");
+      toast.success("Content year created!");
     },
+    onError: (e) => toast.error(e.message),
   });
-  const updateMutation = trpc.contentYear.update.useMutation({ onSuccess: () => utils.contentYear.list.invalidate() });
-  const deleteMutation = trpc.contentYear.delete.useMutation({ onSuccess: () => utils.contentYear.list.invalidate() });
+  const updateMutation = trpc.contentYear.update.useMutation({
+    onSuccess: () => {
+      utils.contentYear.list.invalidate();
+      toast.success("Content year updated.");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const deleteMutation = trpc.contentYear.delete.useMutation({
+    onSuccess: () => utils.contentYear.list.invalidate(),
+    onError: (e) => toast.error(e.message),
+  });
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Content Years</h2>
+        <h2 className="font-display text-xl font-semibold">Content Years</h2>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => { setEditingId(null); setYear(""); setLabel(""); }}><Plus className="h-4 w-4 mr-2" />Add Year</Button>
@@ -751,41 +863,56 @@ function YearsTab() {
               <Input type="number" placeholder="Year (e.g., 2025)" value={year} onChange={(e) => setYear(e.target.value)} />
               <Input placeholder="Label (e.g., 2025 - Year of Kindness)" value={label} onChange={(e) => setLabel(e.target.value)} />
               <Button onClick={() => editingId ? updateMutation.mutate({ id: editingId, year: parseInt(year), label }) : createMutation.mutate({ year: parseInt(year), label })} disabled={!year || !label || createMutation.isPending || updateMutation.isPending} className="w-full">
-                {editingId ? "Save Year" : "Create Year"}
+                {createMutation.isPending || updateMutation.isPending ? "Saving…" : editingId ? "Save Year" : "Create Year"}
               </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {years?.map((y) => (
-          <Card key={y.id}>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-3">
-                <Calendar className="h-5 w-5 text-amber-500" />
-                <h3 className="font-semibold">{y.label}</h3>
-              </div>
-              <p className="text-sm text-gray-600 mb-3">{y.description}</p>
-              <Badge variant={y.isActive ? "default" : "secondary"}>
-                {y.isActive ? "Active" : "Inactive"}
-              </Badge>
-              <div className="mt-3 flex items-center justify-between">
-                <Switch checked={y.isActive} onCheckedChange={(isActive) => updateMutation.mutate({ id: y.id, isActive })} aria-label={`Toggle ${y.label}`} />
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => { setEditingId(y.id); setYear(String(y.year)); setLabel(y.label); setIsOpen(true); }} aria-label={`Edit ${y.label}`}><Pencil className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="sm" onClick={() => deleteMutation.mutate({ id: y.id })} aria-label={`Delete ${y.label}`}><Trash2 className="h-4 w-4 text-red-500" /></Button>
+      {years === undefined ? (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Skeleton className="h-40 rounded-2xl" />
+          <Skeleton className="h-40 rounded-2xl" />
+        </div>
+      ) : years.length === 0 ? (
+        <Empty className="border-2 border-dashed border-border rounded-2xl">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Calendar className="h-6 w-6" />
+            </EmptyMedia>
+            <EmptyTitle>No content years yet</EmptyTitle>
+            <EmptyDescription>Create a content year to organize stories by theme.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {years.map((y) => (
+            <Card key={y.id}>
+              <CardContent className="p-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  <h3 className="font-display font-semibold">{y.label}</h3>
                 </div>
-              </div>
-              {deleteMutation.error && deleteMutation.variables?.id === y.id && (
-                <p className="text-xs text-red-600 mt-2">{deleteMutation.error.message}</p>
-              )}
-            </CardContent>
-          </Card>
-        )) || (
-          <p className="text-gray-500 col-span-3 text-center py-8">No content years yet.</p>
-        )}
-      </div>
+                <p className="text-sm text-foreground/80 mb-3">{y.description}</p>
+                <Badge variant={y.isActive ? "default" : "secondary"}>
+                  {y.isActive ? "Active" : "Inactive"}
+                </Badge>
+                <div className="mt-3 flex items-center justify-between">
+                  <Switch checked={y.isActive} onCheckedChange={(isActive) => updateMutation.mutate({ id: y.id, isActive })} aria-label={`Toggle ${y.label}`} />
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => { setEditingId(y.id); setYear(String(y.year)); setLabel(y.label); setIsOpen(true); }} aria-label={`Edit ${y.label}`}><Pencil className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="sm" onClick={() => deleteMutation.mutate({ id: y.id })} disabled={deleteMutation.isPending} aria-label={`Delete ${y.label}`}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  </div>
+                </div>
+                {deleteMutation.error && deleteMutation.variables?.id === y.id && (
+                  <p className="text-xs text-destructive mt-2">{deleteMutation.error.message}</p>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -796,7 +923,7 @@ function UsersTab() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">All Children</h2>
+      <h2 className="font-display text-xl font-semibold">All Children</h2>
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -812,26 +939,41 @@ function UsersTab() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {children?.map((child) => (
-                <TableRow key={child.id}>
-                  <TableCell className="font-mono text-gray-500">{child.id}</TableCell>
-                  <TableCell className="font-medium">{child.name}</TableCell>
-                  <TableCell>{child.parent?.name || "Unknown"}</TableCell>
-                  <TableCell>{child.ageGroup?.name}</TableCell>
-                  <TableCell>{child.age} years</TableCell>
-                  <TableCell>{child.totalEntries}</TableCell>
-                  <TableCell>
-                    <Badge variant={child.isActive ? "default" : "secondary"}>
-                      {child.isActive ? "Active" : "Inactive"}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              )) || (
+              {children === undefined ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-gray-500 py-8">
-                    No children registered yet.
+                  <TableCell colSpan={7} className="p-4">
+                    <Skeleton className="h-24 rounded-lg" />
                   </TableCell>
                 </TableRow>
+              ) : children.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-8">
+                    <Empty>
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <IdCard className="h-6 w-6" />
+                        </EmptyMedia>
+                        <EmptyTitle>No children registered yet</EmptyTitle>
+                      </EmptyHeader>
+                    </Empty>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                children.map((child) => (
+                  <TableRow key={child.id}>
+                    <TableCell className="font-mono text-muted-foreground">{child.id}</TableCell>
+                    <TableCell className="font-medium">{child.name}</TableCell>
+                    <TableCell>{child.parent?.name || "Unknown"}</TableCell>
+                    <TableCell>{child.ageGroup?.name}</TableCell>
+                    <TableCell>{child.age} years</TableCell>
+                    <TableCell>{child.totalEntries}</TableCell>
+                    <TableCell>
+                      <Badge variant={child.isActive ? "default" : "secondary"}>
+                        {child.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
@@ -864,13 +1006,19 @@ function MediaTab() {
     page,
     pageSize,
   });
-  const deleteMutation = trpc.media.delete.useMutation({ onSuccess: () => utils.media.list.invalidate() });
+  const deleteMutation = trpc.media.delete.useMutation({
+    onSuccess: () => {
+      utils.media.list.invalidate();
+      toast.success("Media deleted.");
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / pageSize)) : 1;
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Media Library</h2>
+      <h2 className="font-display text-xl font-semibold">Media Library</h2>
 
       <Card>
         <CardContent className="p-4">
@@ -895,7 +1043,10 @@ function MediaTab() {
               <MediaUploader
                 key={uploadCategory}
                 category={uploadCategory}
-                onChange={() => utils.media.list.invalidate()}
+                onChange={() => {
+                  utils.media.list.invalidate();
+                  toast.success("File uploaded!");
+                }}
               />
             </div>
           </div>
@@ -933,51 +1084,70 @@ function MediaTab() {
         />
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {data?.items.map((item) => {
-          const Icon = mediaTypeIcons[item.type as MediaCategory] ?? FileIcon;
-          return (
-            <Card key={item.id} className="overflow-hidden">
-              <div className="h-28 bg-gray-100 flex items-center justify-center">
-                {item.type === "image" ? (
-                  <img src={item.url} alt={item.originalName} className="h-full w-full object-cover" />
-                ) : item.type === "video" ? (
-                  <video src={item.url} className="h-full w-full object-cover" muted />
-                ) : (
-                  <Icon className="h-10 w-10 text-gray-400" />
-                )}
-              </div>
-              <CardContent className="p-3 space-y-2">
-                <p className="text-xs font-medium truncate" title={item.originalName}>
-                  {item.originalName}
-                </p>
-                <p className="text-[11px] text-gray-400">
-                  {item.size ? `${(item.size / 1024).toFixed(0)} KB` : ""} · {new Date(item.createdAt).toLocaleDateString()}
-                </p>
-                {item.type === "audio" && <audio src={item.url} controls className="w-full h-8" />}
-                <div className="flex justify-between items-center pt-1">
-                  <ReplaceMediaButton item={item} />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => deleteMutation.mutate({ id: item.id })}
-                    aria-label={`Delete ${item.originalName}`}
-                  >
-                    <Trash2 className="h-4 w-4 text-red-500" />
-                  </Button>
+      {data === undefined ? (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-52 rounded-2xl" />
+          ))}
+        </div>
+      ) : data.items.length === 0 ? (
+        <Empty className="border-2 border-dashed border-border rounded-2xl">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <ImageIcon className="h-6 w-6" />
+            </EmptyMedia>
+            <EmptyTitle>No media uploaded yet</EmptyTitle>
+            <EmptyDescription>Upload an image, audio, or video file above to get started.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {data.items.map((item) => {
+            const Icon = mediaTypeIcons[item.type as MediaCategory] ?? FileIcon;
+            return (
+              <Card key={item.id} className="overflow-hidden">
+                <div className="h-28 bg-muted flex items-center justify-center">
+                  {item.type === "image" ? (
+                    <img src={item.url} alt={item.originalName} className="h-full w-full object-cover" />
+                  ) : item.type === "video" ? (
+                    <video src={item.url} className="h-full w-full object-cover" muted />
+                  ) : (
+                    <Icon className="h-10 w-10 text-muted-foreground/50" />
+                  )}
                 </div>
-              </CardContent>
-            </Card>
-          );
-        }) || <p className="text-gray-500 col-span-4 text-center py-8">No media uploaded yet.</p>}
-      </div>
+                <CardContent className="p-3 space-y-2">
+                  <p className="text-xs font-medium truncate" title={item.originalName}>
+                    {item.originalName}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {item.size ? `${(item.size / 1024).toFixed(0)} KB` : ""} · {new Date(item.createdAt).toLocaleDateString()}
+                  </p>
+                  {item.type === "audio" && <audio src={item.url} controls className="w-full h-8" />}
+                  <div className="flex justify-between items-center pt-1">
+                    <ReplaceMediaButton item={item} />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteMutation.mutate({ id: item.id })}
+                      disabled={deleteMutation.isPending}
+                      aria-label={`Delete ${item.originalName}`}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
       {data && data.total > pageSize && (
         <div className="flex items-center justify-center gap-3">
           <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             Page {page} of {totalPages}
           </p>
           <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
@@ -994,7 +1164,12 @@ function ReplaceMediaButton({ item }: { item: { id: number; type: MediaCategory;
   const [isUploading, setIsUploading] = useState(false);
   const utils = trpc.useUtils();
   const requestUpload = trpc.media.requestUpload.useMutation();
-  const replaceMutation = trpc.media.replace.useMutation({ onSuccess: () => utils.media.list.invalidate() });
+  const replaceMutation = trpc.media.replace.useMutation({
+    onSuccess: () => {
+      utils.media.list.invalidate();
+      toast.success("File replaced!");
+    },
+  });
 
   const handleFile = async (file: File) => {
     setIsUploading(true);
@@ -1014,6 +1189,8 @@ function ReplaceMediaButton({ item }: { item: { id: number; type: MediaCategory;
         mimeType: file.type,
         size: file.size,
       });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to replace file.");
     } finally {
       setIsUploading(false);
     }
@@ -1072,7 +1249,9 @@ function LessonsTab() {
       invalidateLessons();
       setIsOpen(false);
       resetForm();
+      toast.success("Lesson created!");
     },
+    onError: (e) => toast.error(e.message),
   });
   const updateMutation = trpc.story.updateLesson.useMutation({
     onSuccess: () => {
@@ -1080,9 +1259,17 @@ function LessonsTab() {
       setIsOpen(false);
       setEditingId(null);
       resetForm();
+      toast.success("Lesson updated!");
     },
+    onError: (e) => toast.error(e.message),
   });
-  const deleteMutation = trpc.story.deleteLesson.useMutation({ onSuccess: () => invalidateLessons() });
+  const deleteMutation = trpc.story.deleteLesson.useMutation({
+    onSuccess: () => {
+      invalidateLessons();
+      toast.success("Lesson deleted.");
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   const resetForm = () =>
     setForm({ title: "", content: "", pageNumber: "1", imageUrl: "", audioUrl: "", characterDialogue: "", interactiveElement: "" });
@@ -1124,11 +1311,13 @@ function LessonsTab() {
     setIsOpen(true);
   };
 
+  const pending = createMutation.isPending || updateMutation.isPending;
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between gap-4 sm:items-center">
-        <h2 className="text-xl font-semibold">Lessons</h2>
-        <div className="flex gap-3 items-center">
+        <h2 className="font-display text-xl font-semibold">Lessons</h2>
+        <div className="flex gap-3 items-center flex-wrap">
           <Select value={selectedStoryId} onValueChange={setSelectedStoryId}>
             <SelectTrigger className="w-64">
               <SelectValue placeholder="Select a story" />
@@ -1212,8 +1401,8 @@ function LessonsTab() {
                   value={form.audioUrl}
                   onChange={(url) => setForm({ ...form, audioUrl: url })}
                 />
-                <Button onClick={handleSubmit} disabled={!form.title || !form.content} className="w-full">
-                  {editingId ? "Update" : "Create"} Lesson
+                <Button onClick={handleSubmit} disabled={!form.title || !form.content || pending} className="w-full">
+                  {pending ? "Saving…" : editingId ? "Update Lesson" : "Create Lesson"}
                 </Button>
               </div>
             </DialogContent>
@@ -1222,10 +1411,30 @@ function LessonsTab() {
       </div>
 
       {!selectedStoryId ? (
-        <Card className="p-8 text-center text-gray-500">Select a story to manage its lessons.</Card>
+        <Empty className="border-2 border-dashed border-border rounded-2xl">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Layers className="h-6 w-6" />
+            </EmptyMedia>
+            <EmptyTitle>Select a story</EmptyTitle>
+            <EmptyDescription>Choose a story above to manage its lessons.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : lessons === undefined ? (
+        <Skeleton className="h-16 rounded-lg" />
+      ) : lessons.length === 0 ? (
+        <Empty className="border-2 border-dashed border-border rounded-2xl">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Layers className="h-6 w-6" />
+            </EmptyMedia>
+            <EmptyTitle>No lessons yet</EmptyTitle>
+            <EmptyDescription>Add the first page of this story.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <div className="space-y-3">
-          {[...(lessons ?? [])]
+          {[...lessons]
             .sort((a, b) => a.pageNumber - b.pageNumber)
             .map((lesson) => (
               <Card key={lesson.id}>
@@ -1234,15 +1443,15 @@ function LessonsTab() {
                     {lesson.imageUrl ? (
                       <img src={lesson.imageUrl} alt="" className="h-10 w-10 rounded object-cover" />
                     ) : (
-                      <div className="h-10 w-10 rounded bg-gray-100 flex items-center justify-center">
-                        <ImageIcon className="h-4 w-4 text-gray-300" />
+                      <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
+                        <ImageIcon className="h-4 w-4 text-muted-foreground/50" />
                       </div>
                     )}
                     <div>
                       <p className="font-medium text-sm">
                         Page {lesson.pageNumber}: {lesson.title}
                       </p>
-                      <p className="text-xs text-gray-500 line-clamp-1">{lesson.content}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-1">{lesson.content}</p>
                     </div>
                   </div>
                   <div className="flex gap-1 shrink-0">
@@ -1253,17 +1462,15 @@ function LessonsTab() {
                       variant="ghost"
                       size="sm"
                       onClick={() => deleteMutation.mutate({ id: lesson.id })}
+                      disabled={deleteMutation.isPending}
                       aria-label={`Delete ${lesson.title}`}
                     >
-                      <Trash2 className="h-4 w-4 text-red-500" />
+                      <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
                 </CardContent>
               </Card>
             ))}
-          {selectedStoryId && lessons?.length === 0 && (
-            <p className="text-gray-500 text-center py-8">No lessons yet for this story.</p>
-          )}
         </div>
       )}
     </div>
@@ -1283,7 +1490,9 @@ function AgeGroupsTab() {
       utils.ageGroup.list.invalidate();
       setIsOpen(false);
       resetForm();
+      toast.success("Age group created!");
     },
+    onError: (e) => toast.error(e.message),
   });
   const updateMutation = trpc.ageGroup.update.useMutation({
     onSuccess: () => {
@@ -1291,9 +1500,14 @@ function AgeGroupsTab() {
       setIsOpen(false);
       setEditingId(null);
       resetForm();
+      toast.success("Age group updated!");
     },
+    onError: (e) => toast.error(e.message),
   });
-  const deleteMutation = trpc.ageGroup.delete.useMutation({ onSuccess: () => utils.ageGroup.list.invalidate() });
+  const deleteMutation = trpc.ageGroup.delete.useMutation({
+    onSuccess: () => utils.ageGroup.list.invalidate(),
+    onError: (e) => toast.error(e.message),
+  });
 
   const resetForm = () => setForm({ name: "", minAge: "", maxAge: "", description: "", color: "#FFB347" });
   const edit = (ag: {
@@ -1326,10 +1540,12 @@ function AgeGroupsTab() {
     else createMutation.mutate(data);
   };
 
+  const pending = createMutation.isPending || updateMutation.isPending;
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Age Groups</h2>
+        <h2 className="font-display text-xl font-semibold">Age Groups</h2>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
             <Button
@@ -1354,44 +1570,61 @@ function AgeGroupsTab() {
               </div>
               <Textarea placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
               <Input type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} />
-              <Button onClick={handleSubmit} disabled={!form.name || !form.minAge || !form.maxAge} className="w-full">
-                {editingId ? "Save" : "Create"} Age Group
+              <Button onClick={handleSubmit} disabled={!form.name || !form.minAge || !form.maxAge || pending} className="w-full">
+                {pending ? "Saving…" : editingId ? "Save Age Group" : "Create Age Group"}
               </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      <p className="text-sm text-gray-500 -mt-2">
+      <p className="text-sm text-muted-foreground -mt-2">
         Subscription pricing is flat across every age group (£{(SUBSCRIPTION_PRICE_PER_MONTH_GBP_PENCE / 100).toFixed(2)}/month) —
         age groups control content targeting only, not price.
       </p>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {ageGroups?.map((ag) => (
-          <Card key={ag.id} className="overflow-hidden">
-            <div className="h-2" style={{ backgroundColor: ag.color || "#FFB347" }} />
-            <CardContent className="p-6">
-              <h3 className="font-semibold text-lg">{ag.name}</h3>
-              <p className="text-sm text-gray-500 mb-2">
-                Ages {ag.minAge}-{ag.maxAge}
-              </p>
-              <p className="text-sm text-gray-600">{ag.description}</p>
-              <div className="mt-3 flex justify-end gap-1">
-                <Button variant="ghost" size="sm" onClick={() => edit(ag)} aria-label={`Edit ${ag.name}`}>
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => deleteMutation.mutate({ id: ag.id })} aria-label={`Delete ${ag.name}`}>
-                  <Trash2 className="h-4 w-4 text-red-500" />
-                </Button>
-              </div>
-              {deleteMutation.error && deleteMutation.variables?.id === ag.id && (
-                <p className="text-xs text-red-600 mt-2">{deleteMutation.error.message}</p>
-              )}
-            </CardContent>
-          </Card>
-        )) || <p className="text-gray-500 col-span-3 text-center py-8">No age groups yet.</p>}
-      </div>
+      {ageGroups === undefined ? (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Skeleton className="h-40 rounded-2xl" />
+          <Skeleton className="h-40 rounded-2xl" />
+        </div>
+      ) : ageGroups.length === 0 ? (
+        <Empty className="border-2 border-dashed border-border rounded-2xl">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Users className="h-6 w-6" />
+            </EmptyMedia>
+            <EmptyTitle>No age groups yet</EmptyTitle>
+            <EmptyDescription>Create an age group to target content.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {ageGroups.map((ag) => (
+            <Card key={ag.id} className="overflow-hidden">
+              <div className="h-2" style={{ backgroundColor: ag.color || "#FFB347" }} />
+              <CardContent className="p-6">
+                <h3 className="font-display font-semibold text-lg">{ag.name}</h3>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Ages {ag.minAge}-{ag.maxAge}
+                </p>
+                <p className="text-sm text-foreground/80">{ag.description}</p>
+                <div className="mt-3 flex justify-end gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => edit(ag)} aria-label={`Edit ${ag.name}`}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => deleteMutation.mutate({ id: ag.id })} disabled={deleteMutation.isPending} aria-label={`Delete ${ag.name}`}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+                {deleteMutation.error && deleteMutation.variables?.id === ag.id && (
+                  <p className="text-xs text-destructive mt-2">{deleteMutation.error.message}</p>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1407,18 +1640,18 @@ function BillingTab() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Billing</h2>
+      <h2 className="font-display text-xl font-semibold">Billing</h2>
 
       <div className="grid sm:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-6">
-            <p className="text-sm text-gray-500">Active Subscriptions</p>
+            <p className="text-sm text-muted-foreground">Active Subscriptions</p>
             <p className="text-3xl font-bold mt-1">{activeCount}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-6">
-            <p className="text-sm text-gray-500">Subscription Revenue</p>
+            <p className="text-sm text-muted-foreground">Subscription Revenue</p>
             <p className="text-3xl font-bold mt-1 flex items-center gap-1">
               <PoundSterling className="h-6 w-6" />
               {totalRevenue.toFixed(2)}
@@ -1427,15 +1660,15 @@ function BillingTab() {
         </Card>
         <Card>
           <CardContent className="p-6">
-            <p className="text-sm text-gray-500 flex items-center gap-1">
-              <Heart className="h-4 w-4 text-rose-400" />
+            <p className="text-sm text-muted-foreground flex items-center gap-1">
+              <Heart className="h-4 w-4 text-destructive" />
               Total Contributions
             </p>
             <p className="text-3xl font-bold mt-1 flex items-center gap-1">
               <PoundSterling className="h-6 w-6" />
               {(stats?.totalAmount ?? 0).toFixed(2)}
             </p>
-            <p className="text-xs text-gray-400">{stats?.count ?? 0} contribution(s)</p>
+            <p className="text-xs text-muted-foreground/70">{stats?.count ?? 0} contribution(s)</p>
           </CardContent>
         </Card>
       </div>
@@ -1457,23 +1690,31 @@ function BillingTab() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {subs?.map((s) => (
-                <TableRow key={s.id}>
-                  <TableCell>{s.parent?.name || s.parent?.email}</TableCell>
-                  <TableCell>{s.child?.name}</TableCell>
-                  <TableCell>{s.ageGroup?.name}</TableCell>
-                  <TableCell>{s.duration} mo</TableCell>
-                  <TableCell>£{s.totalPrice}</TableCell>
-                  <TableCell>
-                    <Badge variant={s.status === "active" ? "default" : "secondary"}>{s.status}</Badge>
+              {subs === undefined ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="p-4">
+                    <Skeleton className="h-20 rounded-lg" />
                   </TableCell>
                 </TableRow>
-              )) || (
+              ) : subs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-gray-500 py-8">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                     No subscriptions yet.
                   </TableCell>
                 </TableRow>
+              ) : (
+                subs.map((s) => (
+                  <TableRow key={s.id}>
+                    <TableCell>{s.parent?.name || s.parent?.email}</TableCell>
+                    <TableCell>{s.child?.name}</TableCell>
+                    <TableCell>{s.ageGroup?.name}</TableCell>
+                    <TableCell>{s.duration} mo</TableCell>
+                    <TableCell>£{s.totalPrice}</TableCell>
+                    <TableCell>
+                      <Badge variant={s.status === "active" ? "default" : "secondary"}>{s.status}</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
@@ -1483,7 +1724,7 @@ function BillingTab() {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
-            <Heart className="h-5 w-5 text-rose-400" />
+            <Heart className="h-5 w-5 text-destructive" />
             Contribution History
           </CardTitle>
         </CardHeader>
@@ -1498,21 +1739,29 @@ function BillingTab() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {contributions?.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell>{c.parent?.name || c.parent?.email}</TableCell>
-                  <TableCell>£{c.amount}</TableCell>
-                  <TableCell>
-                    <Badge variant={c.status === "completed" ? "default" : "secondary"}>{c.status}</Badge>
-                  </TableCell>
-                  <TableCell>{new Date(c.createdAt).toLocaleDateString()}</TableCell>
-                </TableRow>
-              )) || (
+              {contributions === undefined ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-gray-500 py-8">
+                  <TableCell colSpan={4} className="p-4">
+                    <Skeleton className="h-20 rounded-lg" />
+                  </TableCell>
+                </TableRow>
+              ) : contributions.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                     No contributions yet.
                   </TableCell>
                 </TableRow>
+              ) : (
+                contributions.map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell>{c.parent?.name || c.parent?.email}</TableCell>
+                    <TableCell>£{c.amount}</TableCell>
+                    <TableCell>
+                      <Badge variant={c.status === "completed" ? "default" : "secondary"}>{c.status}</Badge>
+                    </TableCell>
+                    <TableCell>{new Date(c.createdAt).toLocaleDateString()}</TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
