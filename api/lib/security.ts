@@ -1,4 +1,5 @@
 import type { MiddlewareHandler } from "hono";
+import { env } from "./env";
 
 const WINDOW_MS = 60_000;
 const MAX_REQUESTS_PER_WINDOW = 120;
@@ -10,6 +11,28 @@ export function clientKey(request: Request) {
   return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 }
 
+// The browser uploads media directly to S3 via a presigned POST (see
+// api/lib/storage.ts), so connect-src must allow that exact bucket origin --
+// only added when S3 is actually configured, to keep the policy minimal
+// otherwise.
+const s3ConnectSrc = env.awsS3Bucket && env.awsRegion
+  ? `https://${env.awsS3Bucket}.s3.${env.awsRegion}.amazonaws.com`
+  : "";
+
+const CSP = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "img-src 'self' data: https:",
+  "media-src 'self' https:",
+  `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
+  "font-src 'self' https://fonts.gstatic.com",
+  "script-src 'self'",
+  `connect-src 'self'${s3ConnectSrc ? ` ${s3ConnectSrc}` : ""}`,
+].join("; ") + ";";
+
 export const securityHeaders: MiddlewareHandler = async (c, next) => {
   await next();
   c.header("X-Content-Type-Options", "nosniff");
@@ -17,10 +40,7 @@ export const securityHeaders: MiddlewareHandler = async (c, next) => {
   c.header("Referrer-Policy", "strict-origin-when-cross-origin");
   c.header("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   c.header("Cross-Origin-Opener-Policy", "same-origin");
-  c.header(
-    "Content-Security-Policy",
-    "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: https:; media-src 'self' https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self';",
-  );
+  c.header("Content-Security-Policy", CSP);
   if (new URL(c.req.url).protocol === "https:") {
     c.header("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   }
