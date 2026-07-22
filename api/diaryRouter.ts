@@ -115,15 +115,23 @@ export const diaryRouter = createRouter({
       // Increment child stats (total entries + daily streak)
       await incrementChildStats(input.childId, new Date(input.entryDate));
 
-      await generateAndStoreFeedback({
-        entryId: entry!.id,
-        childId: input.childId,
-        childName: child.name,
-        characterName: child.favoriteCharacter || "Chindela",
-        text: input.textContent,
-        imageUrl: input.imageUrl,
-        audioUrl: input.audioUrl,
-      });
+      // The diary entry is already saved at this point -- a Gemini outage (rate
+      // limit, transient network error, etc.) must never fail the child's
+      // submission itself. The child-facing UI already treats feedback as a
+      // separate, best-effort step (see ChildDiary.tsx's entryFeedback query).
+      try {
+        await generateAndStoreFeedback({
+          entryId: entry!.id,
+          childId: input.childId,
+          childName: child.name,
+          characterName: child.favoriteCharacter || "Chindela",
+          text: input.textContent,
+          imageUrl: input.imageUrl,
+          audioUrl: input.audioUrl,
+        });
+      } catch (err) {
+        console.error("[diary] AI feedback generation failed for entry", entry!.id, err);
+      }
 
       // Create notification for parent
       await createNotification({
@@ -166,17 +174,24 @@ export const diaryRouter = createRouter({
         audioUrl: input.audioUrl ?? entry.audioUrl ?? undefined,
       });
 
-      const feedback = await generateAndStoreFeedback({
-        entryId: input.entryId,
-        childId: ctx.child.id,
-        childName: child.name,
-        characterName: child.favoriteCharacter || "Chindela",
-        text: input.textContent,
-        imageUrl: input.imageUrl ?? entry.imageUrl ?? undefined,
-        audioUrl: input.audioUrl ?? entry.audioUrl ?? undefined,
-      });
-
-      return feedback;
+      // The revised entry text is already saved at this point (see
+      // updateDiaryEntryContent above) -- a Gemini outage must never block that
+      // save from succeeding, even though this endpoint's main purpose is to
+      // produce new feedback.
+      try {
+        return await generateAndStoreFeedback({
+          entryId: input.entryId,
+          childId: ctx.child.id,
+          childName: child.name,
+          characterName: child.favoriteCharacter || "Chindela",
+          text: input.textContent,
+          imageUrl: input.imageUrl ?? entry.imageUrl ?? undefined,
+          audioUrl: input.audioUrl ?? entry.audioUrl ?? undefined,
+        });
+      } catch (err) {
+        console.error("[diary] AI feedback generation failed on resubmit for entry", input.entryId, err);
+        return null;
+      }
     }),
 
   // Full attempt/conversation history for one entry (child's own, or their parent's).

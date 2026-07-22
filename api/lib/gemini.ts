@@ -122,7 +122,12 @@ async function callGemini(params: {
           responseMimeType: "application/json",
           temperature: 0.4,
           maxOutputTokens: 1024,
-          thinkingConfig: { thinkingBudget: 0 },
+          // "gemini-flash-latest" is a Google-maintained alias that moves to newer
+          // model generations over time -- the current target rejects the older
+          // numeric thinkingBudget field entirely (400 INVALID_ARGUMENT) and
+          // expects thinkingLevel instead. "LOW" keeps this a fast, low-latency
+          // structured JSON call rather than an extended multi-step reasoning one.
+          thinkingConfig: { thinkingLevel: "LOW" },
         },
         contents: [{ role: "user", parts }],
       }),
