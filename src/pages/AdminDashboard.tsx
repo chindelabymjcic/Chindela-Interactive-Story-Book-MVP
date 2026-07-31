@@ -28,6 +28,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -62,6 +73,7 @@ import {
   LayoutDashboard,
   Sparkles,
   IdCard,
+  CheckCircle2,
 } from "lucide-react";
 import { MediaUploader } from "@/components/admin/MediaUploader";
 import { uploadToPresignedPost } from "@/lib/s3Upload";
@@ -1634,6 +1646,16 @@ function BillingTab() {
   const { data: subs } = trpc.admin.allSubscriptions.useQuery();
   const { data: contributions } = trpc.admin.allContributions.useQuery();
   const { data: stats } = trpc.admin.contributionStats.useQuery();
+  const utils = trpc.useUtils();
+
+  const approveSubscription = trpc.admin.approveSubscription.useMutation({
+    onSuccess: () => {
+      utils.admin.allSubscriptions.invalidate();
+      utils.admin.stats.invalidate();
+      toast.success("Subscription approved and activated.");
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   const activeCount = subs?.filter((s) => s.status === "active").length ?? 0;
   const totalRevenue = subs?.reduce((sum, s) => sum + Number(s.totalPrice), 0) ?? 0;
@@ -1687,18 +1709,19 @@ function BillingTab() {
                 <TableHead>Duration</TableHead>
                 <TableHead>Price</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {subs === undefined ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="p-4">
+                  <TableCell colSpan={7} className="p-4">
                     <Skeleton className="h-20 rounded-lg" />
                   </TableCell>
                 </TableRow>
               ) : subs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                     No subscriptions yet.
                   </TableCell>
                 </TableRow>
@@ -1712,6 +1735,35 @@ function BillingTab() {
                     <TableCell>£{s.totalPrice}</TableCell>
                     <TableCell>
                       <Badge variant={s.status === "active" ? "default" : "secondary"}>{s.status}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {s.status === "pending" && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="outline" size="sm" disabled={approveSubscription.isPending}>
+                              <CheckCircle2 className="h-4 w-4 mr-1.5 text-success" />
+                              Approve
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Approve this payment manually?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Only confirm this after you've verified a matching successful payment for{" "}
+                                <strong>{s.parent?.name || s.parent?.email}</strong> (£{s.totalPrice}) in your Stripe
+                                dashboard. This activates the subscription immediately without going through Stripe's
+                                webhook, and cannot be undone from here.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => approveSubscription.mutate({ id: s.id })}>
+                                Yes, activate subscription
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))

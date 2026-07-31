@@ -11,6 +11,11 @@ import {
   Star,
   ArrowRight,
   Sprout,
+  Brain,
+  GraduationCap,
+  Clapperboard,
+  Gamepad2,
+  HeartHandshake,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -133,6 +138,119 @@ export default function Home() {
               </motion.div>
             </motion.div>
           </div>
+        </div>
+      </section>
+
+      {/* Our Mission Section */}
+      <section className="py-20 bg-card border-y border-border">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fadeInUp}
+            custom={0}
+            className="text-center mb-14"
+          >
+            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary mb-4">
+              <Brain className="h-4 w-4" />
+              Mind Training
+            </div>
+            <h2 className="font-display text-3xl font-bold text-foreground mb-4">Our Mission</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Mind training is about doing good deeds, thinking good thoughts, and speaking kind words.
+              Practicing this daily prevents the mind from naturally resorting to negative thoughts, unkind
+              words, or bad actions — whether at school, at home, in public, or among friends. Just 10 minutes
+              a day with Chindela can help your child grow into a virtuous, loving, and active individual.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 gap-8 mb-14">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={fadeInUp}
+              custom={1}
+              className="rounded-2xl border border-border bg-background p-6"
+            >
+              <h3 className="font-display text-lg font-semibold text-foreground mb-2 flex items-center gap-2">
+                <Star className="h-5 w-5 text-warning" />
+                A Happy, Virtuous Child — Our Only Goal
+              </h3>
+              <p className="text-muted-foreground text-sm">
+                Every day, children record their three best good deeds in a dedicated diary — training them to
+                actively choose good actions, kind words, and positive thoughts throughout their day. Our program
+                is tailored for ages 3 to 16, and adults 18+ are warmly welcome too, using the same daily practice
+                to release unnecessary mental stress and find greater balance. With consent, members may also
+                share short progress videos, which we'd be honoured to feature on our social media.
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={fadeInUp}
+              custom={2}
+              className="rounded-2xl border border-border bg-background p-6"
+            >
+              <h3 className="font-display text-lg font-semibold text-foreground mb-2 flex items-center gap-2">
+                <HeartHandshake className="h-5 w-5 text-destructive" />
+                Our Non-Profit Commitment
+              </h3>
+              <p className="text-muted-foreground text-sm">
+                Chindela by MJ CIC is a non-profit project. We ask for a modest{" "}
+                <strong className="text-foreground">£2 per month</strong> to cover the operation and maintenance
+                of the platform — a price that <strong className="text-foreground">stays fixed</strong>, with no
+                future increases, and covers every current and future feature alike. Yearly payment is available
+                if you prefer, entirely at your discretion. Any amount contributed beyond your subscription is
+                gratefully accepted as a voluntary contribution and is invested transparently in community
+                welfare initiatives, in full compliance with UK regulations.
+              </p>
+            </motion.div>
+          </div>
+
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fadeInUp}
+            custom={3}
+          >
+            <h3 className="font-display text-lg font-semibold text-foreground text-center mb-6">
+              What's Coming Next
+            </h3>
+            <div className="grid sm:grid-cols-3 gap-6">
+              <div className="text-center">
+                <div className="inline-flex rounded-lg p-3 bg-info/10 text-info mb-3">
+                  <GraduationCap className="h-6 w-6" />
+                </div>
+                <h4 className="font-display font-semibold text-foreground mb-1">Educational Support</h4>
+                <p className="text-muted-foreground text-sm">
+                  Children will be able to submit school subject questions and receive guidance and solutions.
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="inline-flex rounded-lg p-3 bg-accent/10 text-accent mb-3">
+                  <Clapperboard className="h-6 w-6" />
+                </div>
+                <h4 className="font-display font-semibold text-foreground mb-1">Entertainment Cartoons</h4>
+                <p className="text-muted-foreground text-sm">
+                  Wholesome, joyful, and relaxing cartoons, full of humor and positive moral values.
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="inline-flex rounded-lg p-3 bg-success/10 text-success mb-3">
+                  <Gamepad2 className="h-6 w-6" />
+                </div>
+                <h4 className="font-display font-semibold text-foreground mb-1">Educational Video Games</h4>
+                <p className="text-muted-foreground text-sm">
+                  Eco-friendly, value-based games designed to foster joy and good habits, with parental consent.
+                </p>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </section>
 

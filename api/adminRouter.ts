@@ -1,8 +1,14 @@
+import { z } from "zod";
 import { createRouter, adminQuery } from "./middleware";
 import { getDb } from "./queries/connection";
 import { count, eq } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { findAllContributions, contributionTotals } from "./queries/contributions";
+import { findSubscriptionById, updateSubscription, createPayment } from "./queries/subscriptions";
+import { createNotification } from "./queries/notifications";
+import { findUserById } from "./queries/users";
+import { sendEmail } from "./lib/email";
+import { subscriptionConfirmationEmail, paymentReceiptEmail } from "./lib/emailTemplates";
 
 export const adminRouter = createRouter({
   stats: adminQuery.query(async () => {
@@ -111,4 +117,71 @@ export const adminRouter = createRouter({
   contributionStats: adminQuery.query(async () => {
     return contributionTotals();
   }),
+
+  // MVP escape hatch: lets an admin manually activate a subscription after
+  // confirming the payment themselves in the Stripe dashboard, without
+  // needing the webhook configured. This intentionally bypasses the "only
+  // the Stripe webhook may activate a subscription" rule enforced elsewhere
+  // (see subscriptionRouter.ts / webhooks/stripe.ts) -- admin-only, and the
+  // resulting payment row is tagged "manual_admin_approval" so it's always
+  // distinguishable from a real Stripe-confirmed payment in the records.
+  approveSubscription: adminQuery
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const sub = await findSubscriptionById(input.id);
+      if (!sub) throw new Error("Subscription not found.");
+      if (sub.status !== "pending") throw new Error(`This subscription is already "${sub.status}", not pending.`);
+
+      const startDate = new Date();
+      const endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + sub.duration);
+
+      await updateSubscription(sub.id, { status: "active", startDate, endDate });
+      await createPayment({
+        subscriptionId: sub.id,
+        parentId: sub.parentId,
+        amount: sub.totalPrice,
+        currency: sub.currency,
+        status: "completed",
+        paymentMethod: "manual_admin_approval",
+        paidAt: startDate,
+      });
+      await createNotification({
+        userId: sub.parentId,
+        childId: sub.childId,
+        type: "payment_succeeded",
+        title: "Subscription activated",
+        message: "Your payment was confirmed and the subscription is now active.",
+        relatedId: sub.id,
+      });
+
+      const parent = await findUserById(sub.parentId);
+      if (parent) {
+        try {
+          await sendEmail({
+            to: parent.email,
+            ...subscriptionConfirmationEmail({
+              name: parent.name ?? parent.email,
+              childName: sub.child?.name ?? "your child",
+              ageGroupName: sub.ageGroup?.name ?? "",
+              duration: sub.duration,
+              totalPrice: sub.totalPrice,
+            }),
+          });
+          await sendEmail({
+            to: parent.email,
+            ...paymentReceiptEmail({
+              name: parent.name ?? parent.email,
+              amount: sub.totalPrice,
+              date: startDate.toLocaleDateString("en-GB"),
+              description: `Subscription — ${sub.ageGroup?.name ?? ""} (${sub.duration} month(s))`,
+            }),
+          });
+        } catch (err) {
+          console.error("[admin] confirmation email failed for manually approved subscription", sub.id, err);
+        }
+      }
+
+      return findSubscriptionById(sub.id);
+    }),
 });
