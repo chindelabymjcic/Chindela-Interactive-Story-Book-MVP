@@ -200,13 +200,8 @@ export default function Home() {
                 Our Non-Profit Commitment
               </h3>
               <p className="text-muted-foreground text-sm">
-                Chindela by MJ CIC is a non-profit project. We ask for a modest{" "}
-                <strong className="text-foreground">£2 per month</strong> to cover the operation and maintenance
-                of the platform — a price that <strong className="text-foreground">stays fixed</strong>, with no
-                future increases, and covers every current and future feature alike. Yearly payment is available
-                if you prefer, entirely at your discretion. Any amount contributed beyond your subscription is
-                gratefully accepted as a voluntary contribution and is invested transparently in community
-                welfare initiatives, in full compliance with UK regulations.
+                Chindela by MJ CIC is a non-profit project dedicated to the welfare and bright future of children.
+                We warmly welcome your loving support and contributions to help us build a better world for them.
               </p>
             </motion.div>
           </div>
