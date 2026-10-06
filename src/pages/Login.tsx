@@ -20,7 +20,12 @@ export default function Login() {
   const [adminToken, setAdminToken] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
-  const onSuccess = (user: { role: string }) => navigate(user.role === "admin" ? "/admin" : "/dashboard");
+  // Only same-site relative paths are honoured ("/x", never "//host" or a full
+  // URL), so ?next= can't be used as an open redirect.
+  const nextParam = searchParams.get("next");
+  const nextPath = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") && !nextParam.startsWith("/\\") ? nextParam : null;
+  const onSuccess = (user: { role: string }) =>
+    navigate(user.role === "admin" ? "/admin" : (nextPath ?? "/dashboard"));
   const onError = (e: { message: string }) => {
     setError(e.message);
     toast.error(e.message);

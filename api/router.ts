@@ -12,6 +12,7 @@ import { ageGroupRouter } from "./ageGroupRouter";
 import { adminRouter } from "./adminRouter";
 import { mediaRouter } from "./mediaRouter";
 import { progressRouter } from "./progressRouter";
+import { donationRouter } from "./donationRouter";
 
 export const appRouter = createRouter({
   ping: publicQuery.query(() => ({ ok: true, ts: Date.now() })),
@@ -28,6 +29,7 @@ export const appRouter = createRouter({
   admin: adminRouter,
   media: mediaRouter,
   progress: progressRouter,
+  donation: donationRouter,
 });
 
 export type AppRouter = typeof appRouter;

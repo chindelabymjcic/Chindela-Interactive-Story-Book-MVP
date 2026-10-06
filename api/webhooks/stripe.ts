@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import type Stripe from "stripe";
-import { getStripe } from "../lib/stripe";
+import { getStripe, addMonths } from "../lib/stripe";
 import { env } from "../lib/env";
 import { findSubscriptionById, findSubscriptionByStripeId, updateSubscription, createPayment } from "../queries/subscriptions";
 import { findContributionById, updateContributionStatus } from "../queries/contributions";
@@ -8,7 +8,7 @@ import { createNotification } from "../queries/notifications";
 import { getDb } from "../queries/connection";
 import { findUserById } from "../queries/users";
 import { sendEmail } from "../lib/email";
-import { subscriptionConfirmationEmail, paymentReceiptEmail, paymentFailedEmail, contributionReceiptEmail, adminAlertEmail, parentNotificationEmail } from "../lib/emailTemplates";
+import { subscriptionConfirmationEmail, paymentReceiptEmail, paymentFailedEmail, contributionReceiptEmail, donationReceiptEmail, adminAlertEmail, parentNotificationEmail } from "../lib/emailTemplates";
 
 // Stripe webhooks use at-least-once delivery -- every handler below must be
 // safe to run twice for the same event (checked via current DB state, not a
@@ -21,25 +21,71 @@ function referencedId(value: string | { id: string } | null | undefined): string
   return typeof value === "string" ? value : value.id;
 }
 
+// Public homepage donation: no local user/child/subscription exists, and
+// Stripe is the system of record, so this only sends the receipts. Stripe
+// redelivers only on a non-2xx response, so duplicate receipts are unlikely.
+async function handleDonationCompleted(session: Stripe.Checkout.Session) {
+  if (session.payment_status !== "paid") return;
+  const amount = ((session.amount_total ?? 0) / 100).toFixed(2);
+  const donorEmail = session.customer_details?.email ?? session.customer_email ?? undefined;
+  const donorName = session.metadata?.donorName || session.customer_details?.name || "friend";
+
+  if (donorEmail) {
+    await sendEmail({ to: donorEmail, ...donationReceiptEmail({ name: donorName, amount }) });
+  }
+  if (env.adminEmail) {
+    await sendEmail({
+      to: env.adminEmail,
+      ...adminAlertEmail({
+        subject: "New donation received",
+        message: `A general donation of £${amount} was received from ${donorName}${donorEmail ? ` (${donorEmail})` : ""}. Stripe Checkout Session: ${session.id}`,
+      }),
+    });
+  }
+}
+
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
+  if (session.metadata?.kind === "general_donation") {
+    await handleDonationCompleted(session);
+    return;
+  }
+
   const localSubscriptionId = Number(session.metadata?.localSubscriptionId);
   if (!localSubscriptionId) return;
+  if (session.payment_status === "unpaid") return; // not paid yet -- nothing to grant
   const sub = await findSubscriptionById(localSubscriptionId);
   if (!sub) return;
 
   const localContributionId = Number(session.metadata?.localContributionId) || undefined;
 
-  const stripeSubscriptionId = referencedId(session.subscription);
-  if (!stripeSubscriptionId) return;
+  let stripeSubscriptionId: string | undefined;
+  let paymentIntentId: string | undefined;
+  let startDate: Date;
+  let endDate: Date;
 
-  // Subscription-mode Checkout has no session.payment_intent -- the one-time
-  // contribution line item (if any) is billed on the subscription's first
-  // invoice, so the payment intent lives there instead.
-  const stripeSubscription = await getStripe().subscriptions.retrieve(stripeSubscriptionId, {
-    expand: ["latest_invoice"],
-  });
-  const latestInvoice = stripeSubscription.latest_invoice as Stripe.Invoice | null;
-  const paymentIntentId = referencedId(latestInvoice?.payments?.data?.[0]?.payment?.payment_intent);
+  if (session.mode === "payment") {
+    // Auto-renew OFF: a single one-time charge buys exactly `duration` months
+    // of access. There's no Stripe subscription -- access ends via endDate
+    // (the same mechanism admin-approved subscriptions use).
+    paymentIntentId = referencedId(session.payment_intent);
+    startDate = new Date();
+    endDate = addMonths(startDate, sub.duration);
+  } else {
+    stripeSubscriptionId = referencedId(session.subscription);
+    if (!stripeSubscriptionId) return;
+
+    // Subscription-mode Checkout has no session.payment_intent -- the one-time
+    // contribution line item (if any) is billed on the subscription's first
+    // invoice, so the payment intent lives there instead.
+    const stripeSubscription = await getStripe().subscriptions.retrieve(stripeSubscriptionId, {
+      expand: ["latest_invoice"],
+    });
+    const latestInvoice = stripeSubscription.latest_invoice as Stripe.Invoice | null;
+    paymentIntentId = referencedId(latestInvoice?.payments?.data?.[0]?.payment?.payment_intent);
+    const item = stripeSubscription.items.data[0];
+    startDate = new Date(item.current_period_start * 1000);
+    endDate = new Date(item.current_period_end * 1000);
+  }
 
   if (sub.status === "active") {
     // Subscription side already handled by an earlier delivery -- but the
@@ -49,16 +95,14 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     return;
   }
 
-  const item = stripeSubscription.items.data[0];
-
   await getDb().transaction(async (tx) => {
     await updateSubscription(
       localSubscriptionId,
       {
         status: "active",
-        stripeSubscriptionId,
-        startDate: new Date(item.current_period_start * 1000),
-        endDate: new Date(item.current_period_end * 1000),
+        ...(stripeSubscriptionId ? { stripeSubscriptionId } : {}),
+        startDate,
+        endDate,
       },
       tx,
     );
@@ -69,6 +113,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
         amount: sub.totalPrice,
         currency: sub.currency,
         status: "completed",
+        stripePaymentIntentId: paymentIntentId,
         paidAt: new Date(),
       },
       tx,
@@ -298,7 +343,12 @@ export async function handleStripeWebhook(c: Context) {
   let event: Stripe.Event;
   try {
     event = getStripe().webhooks.constructEvent(rawBody, sig, env.stripeWebhookSecret);
-  } catch {
+  } catch (err) {
+    console.error(
+      env.stripeWebhookSecret
+        ? `[stripe] webhook signature verification failed: ${err instanceof Error ? err.message : String(err)}`
+        : "[stripe] STRIPE_WEBHOOK_SECRET is not configured -- webhook events cannot be verified",
+    );
     return c.json({ error: "Invalid signature" }, 400);
   }
 

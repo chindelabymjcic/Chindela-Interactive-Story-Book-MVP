@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { trpc } from "@/providers/trpcClient";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
@@ -48,13 +48,21 @@ export default function Subscriptions() {
   const utils = trpc.useUtils();
   const createSub = trpc.subscription.create.useMutation({
     onSuccess: (data) => {
-      if (data.checkoutUrl) {
-        toast.success("Redirecting you to secure checkout…");
-        window.location.href = data.checkoutUrl;
-      }
+      toast.success("Redirecting you to secure checkout…");
+      window.location.assign(data.checkoutUrl);
     },
     onError: (e) => toast.error(e.message),
   });
+  // Stays true through the redirect so the button can't be pressed twice.
+  const redirecting = createSub.isPending || createSub.isSuccess;
+
+  // A child already belongs to an age group, so picking the child pre-fills
+  // it (the parent can still change it explicitly).
+  const handleChildChange = (value: string) => {
+    setSelectedChild(value);
+    const child = children?.find((c) => c.id.toString() === value);
+    if (child) setSelectedAgeGroup(child.ageGroupId.toString());
+  };
   const cancelSub = trpc.subscription.cancel.useMutation({
     onSuccess: () => {
       utils.subscription.list.invalidate();
@@ -81,8 +89,16 @@ export default function Subscriptions() {
       ? `Enter an amount between £${(ContributionLimits.minGBPPence / 100).toFixed(2)} and £${(ContributionLimits.maxGBPPence / 100).toFixed(2)}`
       : undefined;
 
+  const missing = [
+    !selectedChild && "choose a child",
+    !selectedAgeGroup && "choose an age group",
+    contributionError && "fix the contribution amount",
+  ].filter(Boolean) as string[];
+  const durationLabel = `${durationNum} month${durationNum === 1 ? "" : "s"}`;
+  const dueTodayGBP = selectedPrice + (contributionGBPPence > 0 && !contributionError ? contributionGBPPence / 100 : 0);
+
   const handleSubscribe = () => {
-    if (!selectedChild || !selectedAgeGroup || contributionError) return;
+    if (missing.length > 0) return;
     createSub.mutate({
       childId: parseInt(selectedChild),
       ageGroupId: parseInt(selectedAgeGroup),
@@ -149,9 +165,25 @@ export default function Subscriptions() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {children !== undefined && children.length === 0 && (
+                    <div className="p-3 rounded-lg border border-warning/30 bg-warning/5 text-sm">
+                      <p className="font-medium text-foreground">Add a child first</p>
+                      <p className="text-muted-foreground text-xs mt-1">
+                        Subscriptions are linked to a child profile and their age group.{" "}
+                        <Link to="/dashboard" className="text-primary font-medium hover:underline">
+                          Add a child on your dashboard
+                        </Link>
+                        , then come back here. Just want to donate?{" "}
+                        <Link to="/donate" className="text-primary font-medium hover:underline">
+                          Make a donation
+                        </Link>
+                        .
+                      </p>
+                    </div>
+                  )}
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Child</label>
-                    <Select value={selectedChild} onValueChange={setSelectedChild}>
+                    <label className="text-sm font-medium mb-2 block">1. Child</label>
+                    <Select value={selectedChild} onValueChange={handleChildChange}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select child" />
                       </SelectTrigger>
@@ -166,7 +198,7 @@ export default function Subscriptions() {
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Age Group</label>
+                    <label className="text-sm font-medium mb-2 block">2. Age Group</label>
                     <Select value={selectedAgeGroup} onValueChange={setSelectedAgeGroup}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select age group" />
@@ -182,11 +214,12 @@ export default function Subscriptions() {
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Duration</label>
+                    <label className="text-sm font-medium mb-2 block">3. Duration</label>
                     <div className="grid grid-cols-2 gap-2">
                       {durations.map((d) => (
                         <button
                           key={d.value}
+                          type="button"
                           onClick={() => setSelectedDuration(d.value.toString())}
                           className={`p-3 rounded-lg border text-center transition-colors ${
                             selectedDuration === d.value.toString()
@@ -201,13 +234,15 @@ export default function Subscriptions() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between p-3 border border-border rounded-lg">
+                  <div className="flex items-center justify-between gap-3 p-3 border border-border rounded-lg">
                     <div>
                       <label htmlFor="auto-renew" className="text-sm font-medium">
-                        Auto-renew
+                        4. Auto-renew <span className="text-muted-foreground font-normal">({autoRenew ? "on" : "off"})</span>
                       </label>
                       <p className="text-xs text-muted-foreground">
-                        {`Bill £${pricePerMonth.toFixed(2)}/month automatically until cancelled`}
+                        {autoRenew
+                          ? `Renews every ${durationLabel} at £${selectedPrice.toFixed(2)} until you cancel.`
+                          : `One payment for ${durationLabel}. Access ends after that — you won't be charged again.`}
                       </p>
                     </div>
                     <Switch id="auto-renew" checked={autoRenew} onCheckedChange={setAutoRenew} />
@@ -216,7 +251,7 @@ export default function Subscriptions() {
                   <div>
                     <label htmlFor="contribution" className="text-sm font-medium mb-2 flex items-center gap-1.5">
                       <Heart className="h-4 w-4 text-destructive" />
-                      Optional contribution
+                      5. Optional contribution
                     </label>
                     <div className="relative">
                       <PoundSterling className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -233,32 +268,33 @@ export default function Subscriptions() {
                       />
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Add a one-time donation to support Chindela Storybook — completely optional.
+                      Add a one-time donation to support Chindela Storybook — completely optional. Leave blank to skip. It is charged once
+                      and never repeats with renewals.
                     </p>
                     {contributionError && <p className="text-xs text-destructive mt-1">{contributionError}</p>}
                   </div>
 
                   <div className="p-4 bg-muted/50 rounded-lg">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Total Price</span>
+                      <span className="text-sm text-muted-foreground">Due today</span>
                       <span className="text-2xl font-bold text-foreground flex items-center gap-1">
                         <PoundSterling className="h-5 w-5" />
-                        {(selectedPrice + (contributionGBPPence > 0 ? contributionGBPPence / 100 : 0)).toFixed(2)}
+                        {dueTodayGBP.toFixed(2)}
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground/80 mt-1">
-                      {`£${pricePerMonth.toFixed(2)} per month${autoRenew ? ", billed monthly until cancelled" : ` for ${selectedDuration} month(s), then stops automatically`}`}
-                      {contributionGBPPence > 0 ? ` + £${(contributionGBPPence / 100).toFixed(2)} contribution` : ""}
+                      {`£${selectedPrice.toFixed(2)} for ${durationLabel} (£${pricePerMonth.toFixed(2)}/month)`}
+                      {autoRenew ? `, then £${selectedPrice.toFixed(2)} every ${durationLabel} until cancelled` : ", no automatic renewal"}
+                      {contributionGBPPence > 0 && !contributionError ? ` + £${(contributionGBPPence / 100).toFixed(2)} one-time contribution` : ""}
                     </p>
                   </div>
 
-                  <Button
-                    onClick={handleSubscribe}
-                    disabled={!selectedChild || !selectedAgeGroup || !!contributionError || createSub.isPending}
-                    className="w-full rounded-full"
-                  >
-                    {createSub.isPending ? "Redirecting to checkout..." : "Subscribe Now"}
+                  <Button onClick={handleSubscribe} disabled={missing.length > 0 || redirecting} className="w-full rounded-full">
+                    {redirecting ? "Redirecting to secure checkout…" : "Continue to Payment"}
                   </Button>
+                  {missing.length > 0 && !redirecting && (
+                    <p className="text-xs text-muted-foreground">To continue, please {missing.join(", ")}.</p>
+                  )}
                   {createSub.error && <p className="text-sm text-destructive">{createSub.error.message}</p>}
                 </CardContent>
               </Card>
@@ -341,7 +377,12 @@ export default function Subscriptions() {
                           </div>
                         </div>
 
-                        {(sub.status === "active" || sub.status === "pending") && (
+                        {sub.status === "active" && !sub.stripeSubscriptionId && (
+                          <p className="mt-3 text-xs text-muted-foreground">
+                            Doesn't auto-renew — access ends on {sub.endDate ? new Date(sub.endDate).toLocaleDateString() : "the end date"}.
+                          </p>
+                        )}
+                        {(sub.status === "pending" || (sub.status === "active" && sub.stripeSubscriptionId)) && (
                           <div className="mt-4 pt-4 border-t border-border flex justify-end">
                             <Button
                               variant="outline"

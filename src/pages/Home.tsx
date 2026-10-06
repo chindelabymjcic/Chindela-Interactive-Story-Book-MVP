@@ -95,6 +95,12 @@ export default function Home() {
                     Child Login
                   </Button>
                 </Link>
+                <Link to="/donate">
+                  <Button size="lg" variant="outline" className="gap-2 rounded-full border-destructive/40 text-destructive hover:bg-destructive/5">
+                    <Heart className="h-4 w-4" />
+                    Donate
+                  </Button>
+                </Link>
               </div>
             </motion.div>
 
@@ -136,6 +142,77 @@ export default function Home() {
               >
                 <Heart className="h-6 w-6 text-destructive" />
               </motion.div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Support Chindela Section */}
+      <section id="support" className="py-16 bg-card border-t border-border">
+        <div className="container mx-auto px-4 max-w-5xl">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fadeInUp}
+            custom={0}
+            className="text-center mb-10"
+          >
+            <div className="inline-flex items-center gap-2 rounded-full bg-destructive/10 px-4 py-1.5 text-sm font-medium text-destructive mb-4">
+              <HeartHandshake className="h-4 w-4" />
+              Support Chindela
+            </div>
+            <h2 className="font-display text-3xl font-bold text-foreground mb-3">Two Ways to Help</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Make a one-time donation to our non-profit mission, or subscribe so your child can start their storybook journey.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={fadeInUp}
+              custom={1}
+              className="rounded-2xl border-2 border-destructive/20 bg-background p-6 flex flex-col"
+            >
+              <div className="inline-flex self-start rounded-lg p-3 bg-destructive/10 text-destructive mb-4">
+                <Heart className="h-6 w-6" />
+              </div>
+              <h3 className="font-display text-xl font-semibold text-foreground mb-2">Make a Donation</h3>
+              <p className="text-muted-foreground text-sm mb-6 flex-1">
+                Give any amount, once. No account, child profile, or subscription needed — just choose an amount and pay securely.
+              </p>
+              <Link to="/donate">
+                <Button size="lg" className="w-full gap-2 rounded-full bg-destructive text-white hover:bg-destructive/90">
+                  <Heart className="h-4 w-4" />
+                  Donate
+                </Button>
+              </Link>
+            </motion.div>
+
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={fadeInUp}
+              custom={2}
+              className="rounded-2xl border-2 border-primary/20 bg-background p-6 flex flex-col"
+            >
+              <div className="inline-flex self-start rounded-lg p-3 bg-primary/10 text-primary mb-4">
+                <BookOpen className="h-6 w-6" />
+              </div>
+              <h3 className="font-display text-xl font-semibold text-foreground mb-2">Subscribe for a Child</h3>
+              <p className="text-muted-foreground text-sm mb-6 flex-1">
+                Just £2 a month. Sign in, add your child and their age group, then choose a plan — with or without auto-renewal.
+              </p>
+              <Link to={isAuthenticated ? "/subscriptions" : "/login?next=%2Fsubscriptions"}>
+                <Button size="lg" className="w-full gap-2 rounded-full shadow-soft">
+                  Subscribe for a Child
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
             </motion.div>
           </div>
         </div>

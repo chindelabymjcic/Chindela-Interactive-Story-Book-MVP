@@ -20,6 +20,7 @@ import AccountSecurity from './pages/AccountSecurity'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import VerifyEmail from './pages/VerifyEmail'
+import Donate from './pages/Donate'
 import ProtectedRoute from './components/ProtectedRoute'
 
 export default function App() {
@@ -37,6 +38,7 @@ export default function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/donate" element={<Donate />} />
 
             <Route element={<ProtectedRoute variant="parent" />}>
               <Route path="/dashboard" element={<Dashboard />} />

@@ -159,6 +159,16 @@ export function contributionReceiptEmail(params: { name: string; amount: string 
   return { subject: "Thank you for your contribution", html: layout("Thank you", body, "Your contribution receipt") };
 }
 
+export function donationReceiptEmail(params: { name: string; amount: string }) {
+  const name = escapeHtml(params.name);
+  const amount = escapeHtml(params.amount);
+  const body = `
+    <p>Hi ${name},</p>
+    <p>Thank you so much for your donation of <strong>£${amount}</strong> to Chindela by MJ CIC! Your generosity supports the welfare and bright future of children.</p>
+  `;
+  return { subject: "Thank you for your donation", html: layout("Thank you", body, "Your donation receipt") };
+}
+
 export function paymentFailedEmail(params: { name: string; reason: string }) {
   const name = escapeHtml(params.name);
   const reason = escapeHtml(params.reason);

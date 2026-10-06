@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { TRPCError } from "@trpc/server";
 import { env } from "./env";
 
 let instance: Stripe | undefined;
@@ -16,8 +17,52 @@ export function getStripe(): Stripe {
   return instance;
 }
 
-export function computeCancelAt(durationMonths: 1 | 2 | 3 | 6 | 12): number {
-  const cancelAt = new Date();
-  cancelAt.setMonth(cancelAt.getMonth() + durationMonths);
-  return Math.floor(cancelAt.getTime() / 1000);
+// Calendar-month addition (e.g. 31 Jan + 1 month clamps to the end of Feb
+// rather than spilling into March), used for fixed-term access windows.
+export function addMonths(date: Date, months: number): Date {
+  const result = new Date(date);
+  const day = result.getDate();
+  result.setDate(1);
+  result.setMonth(result.getMonth() + months);
+  const lastDayOfMonth = new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate();
+  result.setDate(Math.min(day, lastDayOfMonth));
+  return result;
+}
+
+// Checkout Session creation is the one Stripe call a user waits on directly,
+// so a failure there must reach them as a readable message (never swallowed,
+// never a raw Stripe parameter error) while the server log keeps enough detail
+// -- Stripe error type/code/param/request id, never the key -- to diagnose it.
+export function checkoutError(context: string, err: unknown): TRPCError {
+  if (err instanceof TRPCError) return err;
+  if (err instanceof Stripe.errors.StripeError) {
+    console.error(`[stripe] ${context} failed`, {
+      type: err.type,
+      code: err.code,
+      param: err.param,
+      statusCode: err.statusCode,
+      requestId: err.requestId,
+      message: err.message,
+    });
+    const userMessage =
+      err.type === "StripeCardError"
+        ? err.message
+        : err.type === "StripeConnectionError" || err.type === "StripeAPIError"
+          ? "We couldn't reach our payment provider. Please try again in a moment."
+          : "We couldn't start the secure checkout. Please try again, or contact us if this keeps happening.";
+    return new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: userMessage, cause: err });
+  }
+  console.error(`[stripe] ${context} failed`, err);
+  const notConfigured = err instanceof Error && err.message.includes("STRIPE_SECRET_KEY");
+  return new TRPCError({
+    code: "INTERNAL_SERVER_ERROR",
+    message: notConfigured
+      ? "Online payments are temporarily unavailable. Please try again later."
+      : "We couldn't start the secure checkout. Please try again, or contact us if this keeps happening.",
+    cause: err,
+  });
+}
+
+export function isMissingCustomerError(err: unknown): boolean {
+  return err instanceof Stripe.errors.StripeInvalidRequestError && err.code === "resource_missing" && err.param === "customer";
 }

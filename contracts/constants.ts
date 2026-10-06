@@ -35,6 +35,15 @@ export const ContributionLimits = {
   maxGBPPence: 100_000, // £1,000.00
 } as const;
 
+// Public one-time donation from the homepage -- no account, child, age group
+// or subscription involved. Separate from ContributionLimits on purpose so the
+// two flows can diverge without affecting each other.
+export const DonationLimits = {
+  minGBPPence: 100, // £1.00
+  maxGBPPence: 100_000, // £1,000.00
+} as const;
+export const DonationPresetsGBPPence = [500, 1000, 2000, 5000] as const;
+
 // ============== MEDIA / CMS UPLOADS ==============
 export const MediaCategories = ["image", "audio", "video", "pdf", "document"] as const;
 export type MediaCategory = (typeof MediaCategories)[number];
