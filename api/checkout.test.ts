@@ -176,3 +176,37 @@ describe("addMonths", () => {
     expect(addMonths(new Date(2026, 10, 30), 12)).toEqual(new Date(2027, 10, 30));
   });
 });
+
+describe("checkoutReturnBase", () => {
+  const req = (origin?: string) => new Request("http://internal", { headers: origin ? { origin } : {} });
+
+  it("returns users to the production domain they started on (keeps their login cookie)", async () => {
+    const { checkoutReturnBase } = await import("./lib/stripe");
+    expect(checkoutReturnBase(req("https://www.chindela-bymjcic.com"))).toBe("https://www.chindela-bymjcic.com");
+    expect(checkoutReturnBase(req("https://chindela-bymjcic.com"))).toBe("https://chindela-bymjcic.com");
+  });
+
+  it("falls back to APP_URL, without a trailing slash, for unknown or missing origins", async () => {
+    const { checkoutReturnBase } = await import("./lib/stripe");
+    const { env } = await import("./lib/env");
+    const fallback = env.appUrl.replace(/\/+$/, "");
+    expect(checkoutReturnBase(req("https://evil.example"))).toBe(fallback);
+    expect(checkoutReturnBase(req("http://www.chindela-bymjcic.com"))).toBe(fallback); // https only
+    expect(checkoutReturnBase(req())).toBe(fallback);
+    expect(checkoutReturnBase(req("not a url"))).toBe(fallback);
+    expect(checkoutReturnBase(req()).endsWith("/")).toBe(false);
+  });
+
+  it("builds checkout return URLs from the caller's origin", async () => {
+    const { appRouter } = await import("./router");
+    const c = appRouter.createCaller({
+      req: new Request("http://internal", { headers: { origin: "https://www.chindela-bymjcic.com" } }),
+      resHeaders: new Headers(),
+      user: parent,
+    });
+    await c.subscription.create({ childId: 7, ageGroupId: 3, duration: 1, isAutoRenew: false });
+    await c.donation.createCheckout({ amountGBPPence: 500 });
+    expect(sessionsCreate.mock.calls[0][0].success_url).toBe("https://www.chindela-bymjcic.com/subscriptions?checkout=success");
+    expect(sessionsCreate.mock.calls[1][0].cancel_url).toBe("https://www.chindela-bymjcic.com/donate?donation=cancel");
+  });
+});

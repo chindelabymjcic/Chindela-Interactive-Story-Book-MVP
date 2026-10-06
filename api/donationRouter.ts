@@ -1,8 +1,7 @@
 import { z } from "zod";
 import type Stripe from "stripe";
 import { createRouter, publicQuery } from "./middleware";
-import { getStripe, checkoutError } from "./lib/stripe";
-import { env } from "./lib/env";
+import { getStripe, checkoutError, checkoutReturnBase } from "./lib/stripe";
 import { DonationLimits } from "@contracts/constants";
 
 // General donations are deliberately public: no login, no child, no age group,
@@ -17,7 +16,8 @@ export const donationRouter = createRouter({
         donorEmail: z.string().trim().email().max(255).optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      const returnBase = checkoutReturnBase(ctx.req);
       const metadata: Record<string, string> = { kind: "general_donation" };
       if (input.donorName) metadata.donorName = input.donorName;
 
@@ -40,8 +40,8 @@ export const donationRouter = createRouter({
         ...(input.donorEmail ? { customer_email: input.donorEmail } : {}),
         metadata,
         payment_intent_data: { metadata, description: "Chindela general donation" },
-        success_url: `${env.appUrl}/donate?donation=success`,
-        cancel_url: `${env.appUrl}/donate?donation=cancel`,
+        success_url: `${returnBase}/donate?donation=success`,
+        cancel_url: `${returnBase}/donate?donation=cancel`,
       };
 
       let session: Stripe.Checkout.Session;

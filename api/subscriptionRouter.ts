@@ -11,8 +11,7 @@ import {
 import { createContribution, findContributionsByParent, updateContributionStatus } from "./queries/contributions";
 import { setStripeCustomerId } from "./queries/users";
 import type Stripe from "stripe";
-import { getStripe, checkoutError, isMissingCustomerError } from "./lib/stripe";
-import { env } from "./lib/env";
+import { getStripe, checkoutError, isMissingCustomerError, checkoutReturnBase } from "./lib/stripe";
 import { SubscriptionPricingGBPPence, ContributionLimits } from "@contracts/constants";
 
 // The local rows are created before the Checkout Session; if Stripe never
@@ -167,12 +166,13 @@ export const subscriptionRouter = createRouter({
       // now a plain one-time payment (mode "payment"); the webhook grants
       // access for exactly `duration` months and there's no Stripe
       // subscription left behind that could ever charge again.
-      const buildSessionParams = (customer: string): Stripe.Checkout.SessionCreateParams => ({
+      const returnBase = checkoutReturnBase(ctx.req);
+      const buildSessionParams =(customer: string): Stripe.Checkout.SessionCreateParams => ({
         customer,
         line_items: lineItems,
         metadata,
-        success_url: `${env.appUrl}/subscriptions?checkout=success`,
-        cancel_url: `${env.appUrl}/subscriptions?checkout=cancel`,
+        success_url: `${returnBase}/subscriptions?checkout=success`,
+        cancel_url: `${returnBase}/subscriptions?checkout=cancel`,
         ...(input.isAutoRenew
           ? { mode: "subscription", subscription_data: { metadata } }
           : { mode: "payment", payment_intent_data: { metadata } }),

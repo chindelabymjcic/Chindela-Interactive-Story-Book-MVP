@@ -17,6 +17,30 @@ export function getStripe(): Stripe {
   return instance;
 }
 
+const KNOWN_PUBLIC_HOSTS = ["www.chindela-bymjcic.com", "chindela-bymjcic.com"];
+
+// Where Stripe sends the browser back after checkout. Returning to the same
+// origin the user started on keeps them on the domain their login cookie
+// belongs to (APP_URL may name the *.up.railway.app domain, and a trailing
+// slash in it used to produce "//subscriptions", which no route matches).
+// The Origin header is only honoured for known hosts, so a crafted request
+// can't make a checkout link that returns somewhere else.
+export function checkoutReturnBase(req: Request): string {
+  const fallback = env.appUrl.replace(/\/+$/, "");
+  const origin = req.headers.get("origin");
+  if (!origin) return fallback;
+  try {
+    const url = new URL(origin);
+    const allowed =
+      url.origin === new URL(fallback).origin ||
+      (url.protocol === "https:" && KNOWN_PUBLIC_HOSTS.includes(url.hostname)) ||
+      (!env.isProduction && (url.hostname === "localhost" || url.hostname === "127.0.0.1"));
+    return allowed ? url.origin : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 // Calendar-month addition (e.g. 31 Jan + 1 month clamps to the end of Feb
 // rather than spilling into March), used for fixed-term access windows.
 export function addMonths(date: Date, months: number): Date {
